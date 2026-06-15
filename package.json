@@ -1,0 +1,7 @@
+{
+  "name": "click-heatmap",
+  "private": true,
+  "scripts": {
+    "build:dashboard": "npm run build --prefix dashboard"
+  }
+}

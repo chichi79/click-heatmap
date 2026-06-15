@@ -1,0 +1,11 @@
+node_modules/
+dashboard/node_modules/
+server/node_modules/
+server/data/
+dashboard/dist/
+.env
+.env.*
+!.env*.example
+.vercel/
+.claude/
+*.log

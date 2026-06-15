@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: heatmap-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/paths
+    envVars:
+      - key: NODE_ENV
+        value: production

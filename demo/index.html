@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>네이트</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        font-size: 13px;
+        color: #333;
+        background: #f5f5f5;
+        line-height: 1.5;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      ul {
+        list-style: none;
+      }
+
+      /* ---- 상단 유틸 ---- */
+      .top-bar {
+        background: #fff;
+        border-bottom: 1px solid #e5e5e5;
+        font-size: 11px;
+        color: #888;
+      }
+
+      .top-bar .inner {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 6px 16px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .top-bar a {
+        color: #888;
+        margin-left: 12px;
+      }
+
+      /* ---- 헤더 ---- */
+      .header {
+        background: #fff;
+        border-bottom: 2px solid #e60012;
+      }
+
+      .header .inner {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 16px;
+        display: grid;
+        grid-template-columns: 140px 1fr 200px;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .logo {
+        font-size: 36px;
+        font-weight: 900;
+        color: #e60012;
+        letter-spacing: -2px;
+        cursor: pointer;
+      }
+
+      .logo span {
+        color: #333;
+        font-weight: 400;
+        font-size: 11px;
+        display: block;
+        letter-spacing: 0;
+        margin-top: 2px;
+      }
+
+      /* ---- 검색 ---- */
+      .search-box {
+        display: flex;
+        border: 2px solid #e60012;
+        border-radius: 2px;
+        overflow: hidden;
+        height: 42px;
+      }
+
+      .search-box input {
+        flex: 1;
+        border: none;
+        padding: 0 14px;
+        font-size: 14px;
+        outline: none;
+      }
+
+      .search-box button {
+        width: 52px;
+        background: #e60012;
+        border: none;
+        color: #fff;
+        font-size: 18px;
+        cursor: pointer;
+      }
+
+      .search-box button:hover {
+        background: #c4000f;
+      }
+
+      .hot-keywords {
+        margin-top: 6px;
+        font-size: 11px;
+        color: #888;
+      }
+
+      .hot-keywords a {
+        margin-right: 10px;
+        color: #555;
+      }
+
+      .hot-keywords a:hover {
+        color: #e60012;
+      }
+
+      /* ---- 로그인 ---- */
+      .login-area {
+        font-size: 12px;
+      }
+
+      .login-area input {
+        width: 100%;
+        padding: 5px 8px;
+        border: 1px solid #ddd;
+        margin-bottom: 4px;
+        font-size: 12px;
+      }
+
+      .login-area .btn-login {
+        width: 100%;
+        padding: 6px;
+        background: #e60012;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        margin-top: 2px;
+      }
+
+      .login-area .btn-login:hover {
+        background: #c4000f;
+      }
+
+      .login-links {
+        margin-top: 6px;
+        font-size: 11px;
+        color: #888;
+      }
+
+      .login-links a {
+        color: #666;
+      }
+
+      /* ---- GNB ---- */
+      .gnb {
+        background: #fff;
+        border-bottom: 1px solid #e5e5e5;
+      }
+
+      .gnb .inner {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 16px;
+        display: flex;
+        gap: 0;
+      }
+
+      .gnb a {
+        display: block;
+        padding: 12px 18px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 3px solid transparent;
+      }
+
+      .gnb a:hover,
+      .gnb a.active {
+        color: #e60012;
+        border-bottom-color: #e60012;
+        text-decoration: none;
+      }
+
+      /* ---- 메인 레이아웃 ---- */
+      .main {
+        max-width: 1100px;
+        margin: 16px auto;
+        padding: 0 16px;
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: 16px;
+      }
+
+      .card {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+
+      .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid #eee;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .card-header .tabs a {
+        font-size: 13px;
+        font-weight: 400;
+        color: #888;
+        margin-left: 14px;
+        padding-bottom: 2px;
+      }
+
+      .card-header .tabs a.active {
+        color: #e60012;
+        font-weight: 700;
+        border-bottom: 2px solid #e60012;
+        text-decoration: none;
+      }
+
+      .card-body {
+        padding: 12px 16px;
+      }
+
+      /* ---- 뉴스 ---- */
+      .news-featured {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .news-thumb {
+        background: #ddd;
+        aspect-ratio: 16/10;
+        border-radius: 2px;
+        display: flex;
+        align-items: flex-end;
+        padding: 10px;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .news-thumb::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.7));
+      }
+
+      .news-thumb span {
+        position: relative;
+        z-index: 1;
+      }
+
+      .news-thumb:nth-child(1) {
+        background: linear-gradient(135deg, #4a6fa5, #166088);
+      }
+
+      .news-thumb:nth-child(2) {
+        background: linear-gradient(135deg, #c45c26, #8b2e0b);
+      }
+
+      .news-list li {
+        padding: 7px 0;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 13px;
+        cursor: pointer;
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+      }
+
+      .news-list li:last-child {
+        border-bottom: none;
+      }
+
+      .news-list li:hover {
+        color: #e60012;
+      }
+
+      .news-list .badge {
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+
+      .badge-issue {
+        background: #e60012;
+        color: #fff;
+      }
+
+      .badge-new {
+        background: #ff6600;
+        color: #fff;
+      }
+
+      /* ---- 실시간 이슈 ---- */
+      .issue-keywords {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .issue-keywords a {
+        padding: 4px 10px;
+        background: #f5f5f5;
+        border: 1px solid #e5e5e5;
+        border-radius: 20px;
+        font-size: 12px;
+        color: #444;
+        cursor: pointer;
+      }
+
+      .issue-keywords a:hover {
+        border-color: #e60012;
+        color: #e60012;
+        text-decoration: none;
+      }
+
+      .issue-keywords .rank {
+        color: #e60012;
+        font-weight: 700;
+        margin-right: 2px;
+      }
+
+      /* ---- 사이드바 ---- */
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      /* ---- 날씨 ---- */
+      .weather-box {
+        text-align: center;
+        padding: 20px 16px;
+      }
+
+      .weather-date {
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 8px;
+      }
+
+      .weather-temp {
+        font-size: 42px;
+        font-weight: 300;
+        color: #333;
+      }
+
+      .weather-temp small {
+        font-size: 18px;
+      }
+
+      .weather-city {
+        font-size: 13px;
+        color: #666;
+        margin-top: 4px;
+      }
+
+      .weather-detail {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 12px;
+        font-size: 12px;
+        color: #888;
+      }
+
+      /* ---- 판(커뮤니티) ---- */
+      .pan-list li {
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 12px;
+        cursor: pointer;
+        line-height: 1.6;
+      }
+
+      .pan-list li:hover {
+        color: #e60012;
+      }
+
+      .pan-list .comment-count {
+        color: #e60012;
+        font-weight: 600;
+        margin-right: 4px;
+      }
+
+      /* ---- 쇼핑 ---- */
+      .shop-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+
+      .shop-item {
+        cursor: pointer;
+        text-align: center;
+      }
+
+      .shop-item .thumb {
+        background: #eee;
+        aspect-ratio: 1;
+        border-radius: 4px;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+      }
+
+      .shop-item .thumb:hover {
+        background: #e0e0e0;
+      }
+
+      .shop-item .name {
+        font-size: 11px;
+        color: #555;
+        line-height: 1.4;
+      }
+
+      .shop-item .price {
+        font-size: 12px;
+        font-weight: 700;
+        color: #e60012;
+        margin-top: 2px;
+      }
+
+      /* ---- 하단 배너 ---- */
+      .banner-section {
+        max-width: 1100px;
+        margin: 0 auto 16px;
+        padding: 0 16px;
+      }
+
+      .banner {
+        background: linear-gradient(90deg, #1a1a2e, #16213e);
+        color: #fff;
+        padding: 24px 32px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+      }
+
+      .banner h3 {
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .banner p {
+        font-size: 12px;
+        color: #aaa;
+        margin-top: 4px;
+      }
+
+      .banner .cta {
+        background: #e60012;
+        color: #fff;
+        padding: 10px 24px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+      }
+
+      /* ---- 푸터 ---- */
+      .footer {
+        background: #fff;
+        border-top: 1px solid #e5e5e5;
+        padding: 24px 16px;
+        text-align: center;
+        font-size: 11px;
+        color: #999;
+        margin-top: 24px;
+      }
+
+      .footer-links {
+        margin-bottom: 8px;
+      }
+
+      .footer-links a {
+        color: #666;
+        margin: 0 8px;
+      }
+
+      .footer-links a.privacy {
+        font-weight: 700;
+        color: #333;
+      }
+
+      /* ---- 퀵링크 ---- */
+      .quick-links {
+        position: fixed;
+        right: 16px;
+        bottom: 80px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .quick-links a {
+        display: block;
+        width: 44px;
+        height: 44px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 10px;
+        color: #666;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        line-height: 1.2;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+
+      .quick-links a:hover {
+        border-color: #e60012;
+        color: #e60012;
+        text-decoration: none;
+      }
+
+      /* ---- 데모 안내 (작게) ---- */
+      .demo-notice {
+        background: #fff8e6;
+        border: 1px solid #ffe08a;
+        border-radius: 4px;
+        padding: 8px 16px;
+        font-size: 11px;
+        color: #856404;
+        text-align: center;
+        max-width: 1100px;
+        margin: 8px auto 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-notice">
+      히트맵 SDK 데모 — 이 페이지는 네이트 메인을 모방한 테스트용 페이지입니다. 클릭·스크롤 데이터가 수집됩니다.
+    </div>
+
+    <!-- 상단 유틸 -->
+    <div class="top-bar">
+      <div class="inner">
+        <span>편리한 네이트 &nbsp;|&nbsp; <a href="#">네이트앱</a> <a href="#">네이트온</a></span>
+        <span><a href="#">시작페이지 설정</a> <a href="#">즐겨찾기 추가</a></span>
+      </div>
+    </div>
+
+    <!-- 헤더 -->
+    <header class="header">
+      <div class="inner">
+        <div class="logo" onclick="void(0)">
+          NATE
+          <span>네이트</span>
+        </div>
+
+        <div>
+          <form class="search-box" onsubmit="return false;">
+            <input type="text" placeholder="검색어를 입력하세요" />
+            <button type="submit" aria-label="검색">&#128269;</button>
+          </form>
+          <div class="hot-keywords">
+            인기검색:
+            <a href="#">자동차보험</a>
+            <a href="#">날씨</a>
+            <a href="#">월드컵</a>
+            <a href="#">부동산</a>
+            <a href="#">맛집</a>
+          </div>
+        </div>
+
+        <div class="login-area">
+          <input type="text" placeholder="아이디" />
+          <input type="password" placeholder="비밀번호" />
+          <button class="btn-login" type="button">로그인</button>
+          <div class="login-links">
+            <a href="#">아이디 찾기</a> / <a href="#">비밀번호 재설정</a> |
+            <a href="#"><strong>회원가입</strong></a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- GNB -->
+    <nav class="gnb">
+      <div class="inner">
+        <a href="#" class="active">메일</a>
+        <a href="#">뉴스</a>
+        <a href="#">온딜</a>
+        <a href="#">판</a>
+        <a href="#">TV</a>
+        <a href="#">만화</a>
+        <a href="#">운세</a>
+        <a href="#">게임</a>
+        <a href="#">쇼핑</a>
+        <a href="#">팀룸</a>
+        <a href="#">자동차</a>
+        <a href="#">더보기</a>
+      </div>
+    </nav>
+
+    <!-- 메인 -->
+    <div class="main">
+      <div class="content">
+        <!-- 뉴스 -->
+        <div class="card" style="margin-bottom: 16px">
+          <div class="card-header">
+            <span>뉴스</span>
+            <div class="tabs">
+              <a href="#" class="active">뉴스</a>
+              <a href="#">스포츠</a>
+              <a href="#">연예</a>
+              <a href="#">랭킹뉴스</a>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="news-featured">
+              <div class="news-thumb">
+                <span>홍정도 "회생 신청, 대외경제여건 악화 등으로 불가피한 선택"</span>
+              </div>
+              <div class="news-thumb">
+                <span>입짧은햇님, 주사이모 논란→활동 중단 후…파주 애견카페 사장된 근황</span>
+              </div>
+            </div>
+            <ul class="news-list">
+              <li>
+                <span class="badge badge-issue">issue</span>
+                JTBC·중앙홀딩스 등 중앙그룹 계열사 4곳 법원에 '회생절차' 신청
+              </li>
+              <li>"요즘 영써티들 다 이것 팔아 집 사요"…4개월간 3.7조원 몰렸다는데</li>
+              <li>'0' 하나 잘못 썼다가…"3년치 월급 날리게 됐어요"</li>
+              <li>"그러면서 배우는 거야" 손흥민 위로 받았던 오현규…3년 뒤 '꾸벅' 존경 표했다</li>
+              <li>김기리♥문지인, 출산 앞두고 子 발달장애 가능성 확인…"큰 두려움이었다"</li>
+              <li>
+                <span class="badge badge-new">new</span>
+                극우 부정선거 이어 '인신제사' 음모론…2030, 잠실 시위서 속속 이탈
+              </li>
+              <li>"여성 심폐소생술 시 속옷까지 벗겨라"…한국은 반대라는데, 이유는?</li>
+              <li>통영서 60대 여성 흉기 피살 엿새째…'강도살인' 용의자 오리무중</li>
+            </ul>
+
+            <div style="margin-top: 14px; font-size: 13px; font-weight: 700; margin-bottom: 8px">
+              실시간 이슈 키워드
+            </div>
+            <div class="issue-keywords">
+              <a href="#"><span class="rank">1</span>경찰 사기 구속영장</a>
+              <a href="#"><span class="rank">2</span>스웨덴 튀니지</a>
+              <a href="#"><span class="rank">3</span>선별적 재선거</a>
+              <a href="#"><span class="rank">4</span>유승민 대한체육회장</a>
+              <a href="#"><span class="rank">5</span>불법행위 동조</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 판 -->
+        <div class="card">
+          <div class="card-header">
+            <span>판 Top랭킹</span>
+            <div class="tabs">
+              <a href="#" class="active">결시친</a>
+              <a href="#">10대톡</a>
+              <a href="#">연예톡</a>
+              <a href="#">회사톡</a>
+            </div>
+          </div>
+          <div class="card-body">
+            <ul class="pan-list">
+              <li>
+                <span class="comment-count">댓글 136</span>
+                장원영 이제 막나가네 공항때부터 인성논란 계속 터지네 보기안좋긴하다
+              </li>
+              <li><span class="comment-count">댓글 25</span>방탄 이거 개쩐다...</li>
+              <li><span class="comment-count">댓글 24</span>요즘 뷔 폼</li>
+              <li><span class="comment-count">댓글 40</span>장원영 걍 툭툭 던지는 게 습관같은데</li>
+              <li><span class="comment-count">댓글 32</span>와 네이트판 방탄줌마가 다 먹었네ㅋㅋ;</li>
+              <li><span class="comment-count">댓글 44</span>타 회사 팬들이 장원영 담구려는듯</li>
+              <li><span class="comment-count">댓글 46</span>에스파 결국 아일릿한테 밀렸네</li>
+              <li><span class="comment-count">댓글 20</span>장원영 조직적으로 욕먹는거 짜증나네</li>
+              <li><span class="comment-count">댓글 8</span>장원영 행동 진짜 조심해야 할 듯;</li>
+              <li><span class="comment-count">댓글 15</span>리센느가 누군데 5세대는 이방원이지</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사이드바 -->
+      <aside class="sidebar">
+        <div class="card">
+          <div class="card-header">오늘의 정보</div>
+          <div class="weather-box">
+            <div class="weather-date">06.15 월요일</div>
+            <div class="weather-temp">27<small>℃</small></div>
+            <div class="weather-city">서울 · 맑음</div>
+            <div class="weather-detail">
+              <span>미세먼지 좋음</span>
+              <span>어제보다 ▲1°</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Biz 추천검색어</div>
+          <div class="card-body" style="font-size: 12px; line-height: 2">
+            <a href="#">종합비타민 종류와 가격비교</a><br />
+            <a href="#">이혼 변호사 상담부터 시작</a><br />
+            <a href="#">법인사업자 대출지원</a><br />
+            <a href="#">ADHD 증상부터 확인</a><br />
+            <a href="#">오늘은 몇%? 이 가격 딱 오늘까지만!</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">쇼핑</div>
+          <div class="card-body">
+            <div class="shop-grid">
+              <div class="shop-item">
+                <div class="thumb">👟</div>
+                <div class="name">운동화 특가</div>
+                <div class="price">29,900원</div>
+              </div>
+              <div class="shop-item">
+                <div class="thumb">☕</div>
+                <div class="name">커피머신</div>
+                <div class="price">89,000원</div>
+              </div>
+              <div class="shop-item">
+                <div class="thumb">📱</div>
+                <div class="name">스마트폰</div>
+                <div class="price">399,000원</div>
+              </div>
+              <div class="shop-item">
+                <div class="thumb">🎧</div>
+                <div class="name">이어폰</div>
+                <div class="price">49,900원</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- 배너 -->
+    <div class="banner-section">
+      <div class="banner">
+        <div>
+          <h3>한눈에 보는 오늘, NATE와 함께 하루를 시작하세요</h3>
+          <p>NATE를 시작페이지로 설정하고 다양한 서비스를 이용해보세요</p>
+        </div>
+        <button class="cta" type="button">시작페이지 설정</button>
+      </div>
+    </div>
+
+    <!-- 추가 스크롤 영역 (숏폼) -->
+    <div class="banner-section">
+      <div class="card">
+        <div class="card-header">짧고 강한 재미! 오늘의 숏폼</div>
+        <div class="card-body">
+          <div class="shop-grid" style="grid-template-columns: repeat(4, 1fr)">
+            <div class="shop-item">
+              <div class="thumb" style="aspect-ratio: 9/16; background: #2d2d44; color: #fff; font-size: 13px; padding: 8px">
+                여행 갈 때 나만 이런 실수를...
+              </div>
+            </div>
+            <div class="shop-item">
+              <div class="thumb" style="aspect-ratio: 9/16; background: #3d2d44; color: #fff; font-size: 13px; padding: 8px">
+                다이소 성인용 장난감
+              </div>
+            </div>
+            <div class="shop-item">
+              <div class="thumb" style="aspect-ratio: 9/16; background: #2d443d; color: #fff; font-size: 13px; padding: 8px">
+                드디어 찾아냈다
+              </div>
+            </div>
+            <div class="shop-item">
+              <div class="thumb" style="aspect-ratio: 9/16; background: #443d2d; color: #fff; font-size: 13px; padding: 8px">
+                한국 브랜드 외국인 반응
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 푸터 -->
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="#">회사소개</a>
+        <a href="#">광고문의</a>
+        <a href="#">서비스 약관</a>
+        <a href="#" class="privacy">개인정보처리방침</a>
+        <a href="#">청소년보호정책</a>
+        <a href="#">고객센터</a>
+      </div>
+      <div>© NATE Communications (데모 페이지)</div>
+    </footer>
+
+    <!-- 퀵링크 -->
+    <div class="quick-links">
+      <a href="#">맨<br />위로</a>
+      <a href="#">네이트<br />TV</a>
+      <a href="#">운세</a>
+      <a href="#">이슈<br />UP</a>
+    </div>
+
+    <script src="/heatmap-sdk.js" defer></script>
+  </body>
+</html>
