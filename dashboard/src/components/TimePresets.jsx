@@ -1,7 +1,7 @@
 export const WINDOW_PRESETS = [
-  { value: 5, label: '최근 5분' },
-  { value: 15, label: '최근 15분' },
-  { value: 60, label: '최근 1시간' },
+  { value: 5, label: '5분' },
+  { value: 15, label: '15분' },
+  { value: 60, label: '1시간' },
   { value: 'today', label: '오늘' },
 ];
 
@@ -14,15 +14,20 @@ export function presetToMinutes(preset) {
   return Number(preset);
 }
 
-export default function TimePresets({ value, onChange }) {
+export default function TimePresets({ value, onChange, disabled = false }) {
   return (
-    <div className="btn-group btn-group-sm flex-wrap" role="group" aria-label="시간 범위">
+    <div
+      className={`filter-chips${disabled ? ' filter-chips-disabled' : ''}`}
+      role="group"
+      aria-label="시간 범위"
+    >
       {WINDOW_PRESETS.map((opt) => (
         <button
           key={opt.value}
           type="button"
-          className={`btn${value === opt.value ? ' btn-primary' : ' btn-outline-secondary'}`}
+          className={`filter-chip${value === opt.value ? ' active' : ''}`}
           onClick={() => onChange(opt.value)}
+          disabled={disabled}
         >
           {opt.label}
         </button>
