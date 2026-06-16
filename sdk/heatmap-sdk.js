@@ -6,6 +6,29 @@
   const SESSION_KEY = 'hm_session_id';
   const SESSION_START_KEY = 'hm_session_start';
 
+  function createId() {
+    try {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+      }
+    } catch (e) {
+      /* secure context가 아니면 randomUUID 사용 불가 */
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  function escapeCss(value) {
+    const str = String(value);
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+      return CSS.escape(str);
+    }
+    return str.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+  }
+
   function getVisitorId() {
     try {
       const raw = localStorage.getItem(VISITOR_KEY);
@@ -16,7 +39,7 @@
     } catch (e) {
       /* noop */
     }
-    const id = crypto.randomUUID();
+    const id = createId();
     try {
       localStorage.setItem(VISITOR_KEY, JSON.stringify({ id, ts: Date.now() }));
     } catch (e) {
@@ -29,13 +52,13 @@
     try {
       let id = sessionStorage.getItem(SESSION_KEY);
       if (!id) {
-        id = crypto.randomUUID();
+        id = createId();
         sessionStorage.setItem(SESSION_KEY, id);
         sessionStorage.setItem(SESSION_START_KEY, String(Date.now()));
       }
       return id;
     } catch (e) {
-      return crypto.randomUUID();
+      return createId();
     }
   }
 
@@ -55,20 +78,26 @@
     const script =
       document.currentScript ||
       document.querySelector('script[src*="heatmap-sdk"]');
+    if (!script || !script.src) return '';
     try {
       return new URL('/api/heatmap', script.src).toString();
     } catch (e) {
-      return '/api/heatmap';
+      return '';
     }
   })();
 
   const SERVER_ORIGIN = (function () {
+    if (!ENDPOINT) return '';
     try {
       return new URL(ENDPOINT).origin;
     } catch (e) {
       return '';
     }
   })();
+
+  if (!ENDPOINT || !SERVER_ORIGIN) {
+    return;
+  }
 
   const DB_NAME = 'heatmap-sdk';
   const STORE = 'queue';
@@ -97,9 +126,10 @@
 
   function pageMetrics() {
     const doc = document.documentElement;
-    const pageWidth = Math.max(doc.scrollWidth, document.body.scrollWidth, window.innerWidth);
-    const pageHeight = Math.max(doc.scrollHeight, document.body.scrollHeight);
-    return { pageWidth, pageHeight };
+    const body = document.body;
+    const pageWidth = Math.max(doc.scrollWidth, body ? body.scrollWidth : 0, window.innerWidth);
+    const pageHeight = Math.max(doc.scrollHeight, body ? body.scrollHeight : 0, window.innerHeight);
+    return { pageWidth: pageWidth || window.innerWidth, pageHeight: pageHeight || window.innerHeight };
   }
 
   /** 클릭 위치를 페이지 전체 기준 %로 변환 (스크롤 포함) */
@@ -115,30 +145,34 @@
 
   function getSelector(el) {
     if (!el || el === document.body || el === document.documentElement) return 'body';
-    const parts = [];
-    let node = el;
-    while (node && node !== document.body && node.nodeType === 1) {
-      let part = node.tagName.toLowerCase();
-      if (node.id) {
-        part += '#' + CSS.escape(node.id);
-        parts.unshift(part);
-        break;
-      }
-      if (node.className && typeof node.className === 'string') {
-        const cls = node.className.trim().split(/\s+/).filter(Boolean).slice(0, 2);
-        if (cls.length) part += '.' + cls.map(CSS.escape).join('.');
-      }
-      const parent = node.parentElement;
-      if (parent) {
-        const siblings = [...parent.children].filter((c) => c.tagName === node.tagName);
-        if (siblings.length > 1) {
-          part += `:nth-of-type(${siblings.indexOf(node) + 1})`;
+    try {
+      const parts = [];
+      let node = el;
+      while (node && node !== document.body && node.nodeType === 1) {
+        let part = node.tagName.toLowerCase();
+        if (node.id) {
+          part += '#' + escapeCss(node.id);
+          parts.unshift(part);
+          break;
         }
+        if (node.className && typeof node.className === 'string') {
+          const cls = node.className.trim().split(/\s+/).filter(Boolean).slice(0, 2);
+          if (cls.length) part += '.' + cls.map(escapeCss).join('.');
+        }
+        const parent = node.parentElement;
+        if (parent) {
+          const siblings = [...parent.children].filter((c) => c.tagName === node.tagName);
+          if (siblings.length > 1) {
+            part += `:nth-of-type(${siblings.indexOf(node) + 1})`;
+          }
+        }
+        parts.unshift(part);
+        node = node.parentElement;
       }
-      parts.unshift(part);
-      node = node.parentElement;
+      return parts.join(' > ').slice(0, 500);
+    } catch (e) {
+      return el.tagName ? el.tagName.toLowerCase() : 'unknown';
     }
-    return parts.join(' > ').slice(0, 500);
   }
 
   function getElementMeta(target) {
@@ -307,22 +341,28 @@
 
   // ---- 클릭 좌표 + 요소 정보 수집 ----
   document.addEventListener('click', (e) => {
-    const meta = getElementMeta(e.target);
-    const coords = clickPageCoords(e);
-    track({
-      type: 'click',
-      x: coords.x,
-      y: coords.y,
-      ...baseEvent(),
-      ...meta,
-    });
+    try {
+      const meta = getElementMeta(e.target);
+      const coords = clickPageCoords(e);
+      track(
+        baseEvent({
+          type: 'click',
+          x: coords.x,
+          y: coords.y,
+          ...meta,
+        })
+      );
+    } catch (err) {
+      /* noop */
+    }
   });
 
   // ---- 스크롤 깊이 수집 ----
   function computeScrollDepth() {
     const doc = document.documentElement;
+    const body = document.body;
     const scrollTop = window.scrollY || doc.scrollTop || 0;
-    const docHeight = Math.max(doc.scrollHeight, document.body.scrollHeight);
+    const docHeight = Math.max(doc.scrollHeight, body ? body.scrollHeight : 0, window.innerHeight);
     const winHeight = window.innerHeight;
     if (docHeight <= winHeight) return 100;
     return Math.min(100, +(((scrollTop + winHeight) / docHeight) * 100).toFixed(2));
@@ -338,12 +378,13 @@
         const depth = computeScrollDepth();
         if (depth > maxScrollDepth) {
           maxScrollDepth = depth;
-          track({
-            type: 'scroll',
-            x: null,
-            y: depth,
-            ...baseEvent(),
-          });
+          track(
+            baseEvent({
+              type: 'scroll',
+              x: null,
+              y: depth,
+            })
+          );
         }
         scrollTicking = false;
       });
@@ -363,6 +404,24 @@
       s.onload = resolve;
       s.onerror = reject;
       document.head.appendChild(s);
+    });
+  }
+
+  function stripExternalImages(root) {
+    if (!root) return;
+    root.querySelectorAll('img').forEach((img) => {
+      try {
+        const src = img.currentSrc || img.src;
+        if (!src) return;
+        if (new URL(src, location.href).origin !== location.origin) {
+          img.removeAttribute('src');
+          img.removeAttribute('srcset');
+          img.style.visibility = 'hidden';
+        }
+      } catch (e) {
+        img.removeAttribute('src');
+        img.removeAttribute('srcset');
+      }
     });
   }
 
@@ -400,7 +459,10 @@
       scrollY: 0,
       x: 0,
       y: 0,
-      onclone: (doc) => hideFixedInClone(doc.body),
+      onclone: (doc) => {
+        hideFixedInClone(doc.body);
+        stripExternalImages(doc.body);
+      },
     };
 
     let canvas = await html2canvas(document.documentElement, opts);
@@ -430,19 +492,33 @@
   }
 
   async function captureScreenshot() {
+    if (!SERVER_ORIGIN) return;
+
     const ctx = deviceContext();
     const storageKey = `hm-ss-v5-${location.pathname}-${ctx.deviceType}`;
-    if (sessionStorage.getItem(storageKey)) return;
+    try {
+      if (sessionStorage.getItem(storageKey)) return;
+    } catch (e) {
+      /* noop */
+    }
 
     try {
       await loadScript(SERVER_ORIGIN + '/html2canvas.min.js');
+      if (typeof html2canvas !== 'function') return;
+
       await new Promise((r) => setTimeout(r, 1500));
 
       const { pageWidth, pageHeight } = pageMetrics();
       const scale = Math.min(1, 1400 / window.innerWidth);
 
       const canvas = await captureFullPageSilent(scale);
-      const image = canvas.toDataURL('image/jpeg', 0.72);
+      let image;
+      try {
+        image = canvas.toDataURL('image/jpeg', 0.72);
+      } catch (e) {
+        return;
+      }
+
       const res = await fetch(SERVER_ORIGIN + '/api/screenshot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -457,13 +533,20 @@
         }),
       });
 
-      if (res.ok) sessionStorage.setItem(storageKey, '1');
+      if (res.ok) {
+        try {
+          sessionStorage.setItem(storageKey, '1');
+        } catch (e) {
+          /* noop */
+        }
+      }
     } catch (e) {
       /* 캡처 실패 시 조용히 무시 */
     }
   }
 
   function scheduleScreenshot() {
+    if (!SERVER_ORIGIN) return;
     const run = () => setTimeout(captureScreenshot, 500);
     if ('requestIdleCallback' in window) {
       requestIdleCallback(run, { timeout: 4000 });
