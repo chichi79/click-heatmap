@@ -17,6 +17,7 @@ function pruneByRange(clicks, fromEpoch, toEpoch) {
 export function useLiveFeed({
   path,
   deviceType,
+  variant = 'all',
   windowMinutes,
   from,
   to,
@@ -79,6 +80,7 @@ export function useLiveFeed({
       path,
       deviceType,
     });
+    if (variant && variant !== 'all') params.set('variant', variant);
 
     if (useCustomRange && fromEpoch) {
       params.set('from', String(fromEpoch));
@@ -111,7 +113,7 @@ export function useLiveFeed({
     return () => {
       cancelled = true;
     };
-  }, [path, deviceType, windowMinutes, enabled, useCustomRange, fromEpoch, toEpoch, prune]);
+  }, [path, deviceType, variant, windowMinutes, enabled, useCustomRange, fromEpoch, toEpoch, prune]);
 
   useEffect(() => {
     if (!liveWs || !path) {

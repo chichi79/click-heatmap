@@ -49,6 +49,28 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_sessions_visitor ON sessions(visitor_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at);
+
+  CREATE TABLE IF NOT EXISTS experiments (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL,
+    path            TEXT NOT NULL,
+    variants        TEXT NOT NULL,
+    split_json      TEXT NOT NULL,
+    goal_selector   TEXT,
+    status          TEXT NOT NULL DEFAULT 'active',
+    created_at      INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_experiments_path ON experiments(path);
+  CREATE INDEX IF NOT EXISTS idx_experiments_status ON experiments(status);
+
+  CREATE TABLE IF NOT EXISTS assignments (
+    visitor_id      TEXT NOT NULL,
+    experiment_id   INTEGER NOT NULL,
+    variant         TEXT NOT NULL,
+    assigned_at     INTEGER NOT NULL,
+    PRIMARY KEY (visitor_id, experiment_id),
+    FOREIGN KEY (experiment_id) REFERENCES experiments(id)
+  );
 `);
 
 function migrateEventsTable() {
@@ -65,6 +87,8 @@ function migrateEventsTable() {
     ['tag_name', 'TEXT'],
     ['element_text', 'TEXT'],
     ['visitor_id', 'TEXT'],
+    ['experiment_id', 'INTEGER'],
+    ['variant', 'TEXT'],
   ];
   for (const [name, type] of additions) {
     if (!cols.has(name)) {
@@ -90,5 +114,7 @@ migrateScreenshotsTable();
 db.exec(`CREATE INDEX IF NOT EXISTS idx_device_type ON events(device_type)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_session ON events(session)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_visitor ON events(visitor_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_experiment ON events(experiment_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_variant ON events(variant)`);
 
 export default db;

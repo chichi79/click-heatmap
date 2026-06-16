@@ -10,6 +10,11 @@ export const VIEW_MODES = [
     subtitle: '실시간 클릭 — 지금 페이지에서 무슨 일이 일어나는지 확인하세요',
   },
   {
+    id: 'ab',
+    label: 'A/B Test',
+    subtitle: '실험 생성·배정·variant별 전환·히트맵 비교',
+  },
+  {
     id: 'analytics',
     label: 'Analytics',
     subtitle: 'UV·PV·체류·퍼널 — 방문자 행동을 숫자로 분석합니다',

@@ -24,6 +24,13 @@ function deviceFilter(deviceType, clauses, params) {
   }
 }
 
+function variantFilter(variant, clauses, params) {
+  if (variant && variant !== 'all') {
+    clauses.push('variant = @variant');
+    params.variant = variant;
+  }
+}
+
 router.get('/paths', (req, res) => {
   const { from, to, deviceType = 'all' } = req.query;
   const { clauses, params } = timeFilter(from, to);
@@ -50,11 +57,12 @@ router.get('/paths', (req, res) => {
 });
 
 router.get('/heatmap-data', (req, res) => {
-  const { path, from, to, type = 'click', deviceType = 'all' } = req.query;
+  const { path, from, to, type = 'click', deviceType = 'all', variant = 'all' } = req.query;
   if (!path) return res.status(400).json({ error: 'path is required' });
 
   const { clauses, params } = timeFilter(from, to);
   deviceFilter(deviceType, clauses, params);
+  variantFilter(variant, clauses, params);
   clauses.push('path = @path', 'type = @type', 'x IS NOT NULL', 'y IS NOT NULL');
   params.path = path;
   params.type = type;
@@ -67,11 +75,12 @@ router.get('/heatmap-data', (req, res) => {
 });
 
 router.get('/scroll-depth', (req, res) => {
-  const { path, from, to, deviceType = 'all' } = req.query;
+  const { path, from, to, deviceType = 'all', variant = 'all' } = req.query;
   if (!path) return res.status(400).json({ error: 'path is required' });
 
   const { clauses, params } = timeFilter(from, to);
   deviceFilter(deviceType, clauses, params);
+  variantFilter(variant, clauses, params);
   clauses.push('path = @path', "type = 'scroll'");
   params.path = path;
 
@@ -98,11 +107,12 @@ router.get('/scroll-depth', (req, res) => {
 });
 
 router.get('/element-clicks', (req, res) => {
-  const { path, from, to, deviceType = 'all' } = req.query;
+  const { path, from, to, deviceType = 'all', variant = 'all' } = req.query;
   if (!path) return res.status(400).json({ error: 'path is required' });
 
   const { clauses, params } = timeFilter(from, to);
   deviceFilter(deviceType, clauses, params);
+  variantFilter(variant, clauses, params);
   clauses.push('path = @path', "type = 'click'", 'selector IS NOT NULL');
   params.path = path;
 
@@ -151,7 +161,7 @@ router.get('/screenshot', (req, res) => {
 });
 
 router.get('/live-recent', (req, res) => {
-  const { path, minutes = '5', from, to, deviceType = 'all' } = req.query;
+  const { path, minutes = '5', from, to, deviceType = 'all', variant = 'all' } = req.query;
   if (!path) return res.status(400).json({ error: 'path is required' });
 
   const clauses = ['path = @path', "type = 'click'", 'x IS NOT NULL', 'y IS NOT NULL'];
@@ -171,11 +181,12 @@ router.get('/live-recent', (req, res) => {
   }
 
   deviceFilter(deviceType, clauses, params);
+  variantFilter(variant, clauses, params);
 
   const rows = db
     .prepare(
       `SELECT x, y, selector, tag_name as tagName, element_text as elementText,
-              device_type as deviceType, ts, session, visitor_id as visitorId
+              device_type as deviceType, ts, session, visitor_id as visitorId, variant
        FROM events
        WHERE ${clauses.join(' AND ')}
        ORDER BY ts DESC
@@ -299,11 +310,12 @@ router.get('/timeline', (req, res) => {
 });
 
 router.get('/analytics', (req, res) => {
-  const { path, from, to, deviceType = 'all' } = req.query;
+  const { path, from, to, deviceType = 'all', variant = 'all' } = req.query;
   if (!path) return res.status(400).json({ error: 'path is required' });
 
   const { clauses, params } = timeFilter(from, to);
   deviceFilter(deviceType, clauses, params);
+  variantFilter(variant, clauses, params);
   clauses.push('path = @path');
   params.path = path;
 

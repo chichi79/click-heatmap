@@ -32,6 +32,9 @@ export default function FilterPanel({
   onRealtimeCustomRangeChange,
   deviceType,
   onDeviceTypeChange,
+  variant,
+  onVariantChange,
+  showVariantFilter,
   statLabel,
 }) {
   const isRealtime = mode === 'realtime';
@@ -68,6 +71,24 @@ export default function FilterPanel({
           ))}
         </select>
       </div>
+
+      {showVariantFilter && (
+        <div className="filter-field">
+          <label>Variant</label>
+          <div className="device-tabs">
+            {['all', 'A', 'B'].map((v) => (
+              <button
+                key={v}
+                type="button"
+                className={variant === v ? 'active' : ''}
+                onClick={() => onVariantChange(v)}
+              >
+                {v === 'all' ? '전체' : v}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="filter-field">
         <label>디바이스</label>

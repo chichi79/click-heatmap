@@ -10,11 +10,11 @@ const router = Router();
 
 const insertStmt = db.prepare(
   `INSERT INTO events (
-     type, x, y, path, session, visitor_id, ts,
+     type, x, y, path, session, visitor_id, experiment_id, variant, ts,
      viewport_width, viewport_height, screen_width, device_pixel_ratio, device_type,
      selector, tag_name, element_text
    ) VALUES (
-     @type, @x, @y, @path, @session, @visitorId, @ts,
+     @type, @x, @y, @path, @session, @visitorId, @experimentId, @variant, @ts,
      @viewportWidth, @viewportHeight, @screenWidth, @devicePixelRatio, @deviceType,
      @selector, @tagName, @elementText
    )`
@@ -51,6 +51,13 @@ function normalizeEvent(e) {
     path: e.path,
     session: e.session,
     visitorId: typeof e.visitorId === 'string' ? e.visitorId : e.visitor_id ?? null,
+    experimentId:
+      typeof e.experimentId === 'number'
+        ? e.experimentId
+        : typeof e.experiment_id === 'number'
+          ? e.experiment_id
+          : null,
+    variant: typeof e.variant === 'string' ? e.variant : null,
     ts: e.ts,
     viewportWidth: typeof e.viewportWidth === 'number' ? e.viewportWidth : null,
     viewportHeight: typeof e.viewportHeight === 'number' ? e.viewportHeight : null,

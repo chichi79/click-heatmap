@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import collectRouter from './routes/collect.js';
 import queryRouter from './routes/query.js';
+import abRouter from './routes/ab.js';
 import { screenshotsDir } from './db.js';
 import { setupLiveServer } from './live.js';
 
@@ -22,6 +23,7 @@ app.use('/api', express.json());
 
 app.use('/api', collectRouter);
 app.use('/api', queryRouter);
+app.use('/api', abRouter);
 
 app.use('/heatmap-sdk.js', express.static(path.join(__dirname, '../../sdk/heatmap-sdk.js')));
 app.use(

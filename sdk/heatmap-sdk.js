@@ -77,6 +77,7 @@
 
   let buf = [];
   let maxScrollDepth = 0;
+  let abAssignments = [];
 
   function getDeviceType(innerWidth) {
     if (innerWidth < 768) return 'mobile';
@@ -216,6 +217,7 @@
   }
 
   function baseEvent(extra) {
+    const ab = abAssignments[0] ?? null;
     return {
       path: location.pathname,
       session: SESSION,
@@ -225,8 +227,43 @@
       selector: null,
       tagName: null,
       elementText: null,
+      ...(ab ? { experimentId: ab.experimentId, variant: ab.variant } : {}),
       ...extra,
     };
+  }
+
+  function exposeHeatmapApi() {
+    window.__heatmap = {
+      getVariant(experimentId) {
+        const id = Number(experimentId);
+        const found = abAssignments.find((a) => a.experimentId === id);
+        if (found) return found.variant;
+        return abAssignments[0]?.variant ?? null;
+      },
+      getExperiment() {
+        return abAssignments[0] ?? null;
+      },
+      experiments: abAssignments,
+    };
+  }
+
+  async function loadAbConfig() {
+    if (!SERVER_ORIGIN) return;
+    try {
+      const url =
+        SERVER_ORIGIN +
+        '/api/ab/config?path=' +
+        encodeURIComponent(location.pathname) +
+        '&visitorId=' +
+        encodeURIComponent(VISITOR_ID);
+      const res = await fetch(url);
+      if (res.ok) {
+        abAssignments = await res.json();
+        exposeHeatmapApi();
+      }
+    } catch (e) {
+      /* noop */
+    }
   }
 
   function trackPageview() {
@@ -251,14 +288,22 @@
   }
 
   // ---- 페이지뷰 (최초 + SPA 이동) ----
-  trackPageview();
+  async function onRouteChange() {
+    await loadAbConfig();
+    trackPageview();
+  }
 
   const origPushState = history.pushState;
   history.pushState = function (...args) {
     origPushState.apply(this, args);
-    trackPageview();
+    onRouteChange();
   };
-  window.addEventListener('popstate', trackPageview);
+  window.addEventListener('popstate', () => onRouteChange());
+
+  loadAbConfig().then(() => {
+    trackPageview();
+    exposeHeatmapApi();
+  });
 
   // ---- 클릭 좌표 + 요소 정보 수집 ----
   document.addEventListener('click', (e) => {

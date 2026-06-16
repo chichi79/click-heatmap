@@ -9,6 +9,7 @@ import ClickFeed from './components/ClickFeed.jsx';
 import PathPlot from './components/PathPlot.jsx';
 import AnalyticsPanel from './components/AnalyticsPanel.jsx';
 import FunnelPanel from './components/FunnelPanel.jsx';
+import AbTestPanel from './components/AbTestPanel.jsx';
 import { presetToMinutes, WINDOW_PRESETS } from './components/TimePresets.jsx';
 import { useLiveFeed } from './hooks/useLiveFeed.js';
 import { apiUrl } from './api.js';
@@ -19,13 +20,14 @@ function toEpoch(datetimeLocal) {
   return Number.isNaN(ms) ? '' : String(ms);
 }
 
-function buildParams(path, from, to, deviceType) {
+function buildParams(path, from, to, deviceType, variant = 'all') {
   const params = new URLSearchParams({ path });
   const fromEpoch = toEpoch(from);
   const toEpochVal = toEpoch(to);
   if (fromEpoch) params.set('from', fromEpoch);
   if (toEpochVal) params.set('to', toEpochVal);
   if (deviceType && deviceType !== 'all') params.set('deviceType', deviceType);
+  if (variant && variant !== 'all') params.set('variant', variant);
   return params;
 }
 
@@ -79,13 +81,23 @@ export default function App() {
   const [funnel, setFunnel] = useState(null);
   const [funnelSteps, setFunnelSteps] = useState('/,/demo/');
   const [screenshot, setScreenshot] = useState(null);
+  const [experiments, setExperiments] = useState([]);
+  const [selectedExperimentId, setSelectedExperimentId] = useState(null);
+  const [abResults, setAbResults] = useState(null);
+  const [variantFilter, setVariantFilter] = useState('all');
 
   const windowMinutes = presetToMinutes(windowPreset);
   const isRealtime = viewMode === 'realtime';
   const isUx = viewMode === 'ux';
   const isPath = viewMode === 'path';
   const isAnalytics = viewMode === 'analytics';
+  const isAb = viewMode === 'ab';
   const modeMeta = getModeMeta(viewMode);
+
+  const activeExperimentForPath = experiments.find(
+    (e) => e.status === 'active' && e.path === selectedPath
+  );
+  const showVariantFilter = Boolean(activeExperimentForPath);
 
   const effectiveFrom = isRealtime && !realtimeCustomRange ? '' : from;
   const effectiveTo = isRealtime && !realtimeCustomRange ? '' : to;
@@ -93,6 +105,7 @@ export default function App() {
   const { clicks: liveClicks, feed, connected, stats } = useLiveFeed({
     path: selectedPath,
     deviceType,
+    variant: variantFilter,
     windowMinutes,
     from: effectiveFrom,
     to: effectiveTo,
@@ -103,9 +116,11 @@ export default function App() {
   const heatmapClicks = isRealtime ? liveClicks : uxClicks;
   const statLabel = isPath
     ? `분석 세션: ${pathPlot?.totalSessions ?? 0}`
-    : isAnalytics
-      ? `UV: ${analytics?.uv ?? 0} · PV: ${analytics?.pageviews ?? 0}`
-      : `클릭: ${isRealtime ? liveClicks.length : uxClicks.length} · 스크롤·PV는 Analytics 참고`;
+    : isAb
+      ? `실험: ${experiments.filter((e) => e.status === 'active').length}개 진행 중`
+      : isAnalytics
+        ? `UV: ${analytics?.uv ?? 0} · PV: ${analytics?.pageviews ?? 0}`
+        : `클릭: ${isRealtime ? liveClicks.length : uxClicks.length}${showVariantFilter ? ` · Variant ${variantFilter === 'all' ? '전체' : variantFilter}` : ''}`;
 
   const loadPaths = useCallback(() => {
     const params = buildGlobalParams(effectiveFrom, effectiveTo, deviceType);
@@ -123,13 +138,71 @@ export default function App() {
     loadPaths();
   }, [loadPaths]);
 
+  const loadExperiments = useCallback(() => {
+    fetch(apiUrl('/api/ab/experiments'))
+      .then((res) => res.json())
+      .then((rows) => {
+        setExperiments(rows);
+        setSelectedExperimentId((prev) => prev || rows[0]?.id || null);
+      })
+      .catch(() => setExperiments([]));
+  }, []);
+
+  useEffect(() => {
+    loadExperiments();
+  }, [loadExperiments]);
+
+  useEffect(() => {
+    if (!isAb || !selectedExperimentId) {
+      setAbResults(null);
+      return;
+    }
+    const params = new URLSearchParams({ experimentId: String(selectedExperimentId) });
+    const fromEpoch = toEpoch(from);
+    const toEpochVal = toEpoch(to);
+    if (fromEpoch) params.set('from', fromEpoch);
+    if (toEpochVal) params.set('to', toEpochVal);
+
+    fetch(apiUrl(`/api/ab/results?${params.toString()}`))
+      .then((res) => res.json())
+      .then(setAbResults)
+      .catch(() => setAbResults(null));
+  }, [selectedExperimentId, from, to, isAb]);
+
+  async function createExperiment(payload) {
+    const res = await fetch(apiUrl('/api/ab/experiments'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '생성 실패');
+    loadExperiments();
+    setSelectedExperimentId(data.id);
+  }
+
+  async function toggleExperimentStatus(id, status) {
+    await fetch(apiUrl(`/api/ab/experiments/${id}`), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    loadExperiments();
+  }
+
+  function handleViewHeatmap(path, variant) {
+    setSelectedPath(path);
+    setVariantFilter(variant);
+    setViewMode('ux');
+  }
+
   useEffect(() => {
     if (!isUx || !selectedPath) {
       if (!selectedPath) setUxClicks([]);
       return;
     }
 
-    const params = buildParams(selectedPath, from, to, deviceType);
+    const params = buildParams(selectedPath, from, to, deviceType, variantFilter);
 
     fetch(apiUrl(`/api/heatmap-data?${params.toString()}`))
       .then((res) => res.json())
@@ -145,7 +218,7 @@ export default function App() {
       .then((res) => res.json())
       .then(setElements)
       .catch(() => setElements([]));
-  }, [selectedPath, from, to, deviceType, isUx]);
+  }, [selectedPath, from, to, deviceType, variantFilter, isUx]);
 
   useEffect(() => {
     if (!isPath || !selectedPath) {
@@ -153,12 +226,12 @@ export default function App() {
       return;
     }
 
-    const params = buildParams(selectedPath, from, to, deviceType);
+    const params = buildParams(selectedPath, from, to, deviceType, variantFilter);
     fetch(apiUrl(`/api/path-plot?${params.toString()}`))
       .then((res) => res.json())
       .then(setPathPlot)
       .catch(() => setPathPlot(null));
-  }, [selectedPath, from, to, deviceType, isPath]);
+  }, [selectedPath, from, to, deviceType, variantFilter, isPath]);
 
   useEffect(() => {
     if (!isAnalytics || !selectedPath) {
@@ -166,12 +239,12 @@ export default function App() {
       return;
     }
 
-    const params = buildParams(selectedPath, from, to, deviceType);
+    const params = buildParams(selectedPath, from, to, deviceType, variantFilter);
     fetch(apiUrl(`/api/analytics?${params.toString()}`))
       .then((res) => res.json())
       .then(setAnalytics)
       .catch(() => setAnalytics(null));
-  }, [selectedPath, from, to, deviceType, isAnalytics]);
+  }, [selectedPath, from, to, deviceType, variantFilter, isAnalytics]);
 
   const loadFunnel = useCallback(() => {
     const params = buildGlobalParams(from, to, deviceType);
@@ -199,13 +272,14 @@ export default function App() {
         from: String(fromTs),
       });
       if (deviceType !== 'all') params.set('deviceType', deviceType);
+      if (variantFilter !== 'all') params.set('variant', variantFilter);
 
       fetch(apiUrl(`/api/scroll-depth?${params.toString()}`))
         .then((res) => res.json())
         .then(setScrollDepth)
         .catch(() => setScrollDepth({ total: 0, data: [] }));
     } else if (isRealtime && realtimeCustomRange) {
-      const params = buildParams(selectedPath, from, to, deviceType);
+      const params = buildParams(selectedPath, from, to, deviceType, variantFilter);
       fetch(apiUrl(`/api/scroll-depth?${params.toString()}`))
         .then((res) => res.json())
         .then(setScrollDepth)
@@ -225,6 +299,7 @@ export default function App() {
     realtimeCustomRange,
     from,
     to,
+    variantFilter,
   ]);
 
   return (
@@ -266,8 +341,25 @@ export default function App() {
         onRealtimeCustomRangeChange={setRealtimeCustomRange}
         deviceType={deviceType}
         onDeviceTypeChange={setDeviceType}
+        variant={variantFilter}
+        onVariantChange={setVariantFilter}
+        showVariantFilter={showVariantFilter}
         statLabel={statLabel}
       />
+
+      {isAb && (
+        <AbTestPanel
+          experiments={experiments}
+          results={abResults}
+          selectedExperimentId={selectedExperimentId}
+          onSelectExperiment={setSelectedExperimentId}
+          onCreate={createExperiment}
+          onToggleStatus={toggleExperimentStatus}
+          onViewHeatmap={handleViewHeatmap}
+          from={from}
+          to={to}
+        />
+      )}
 
       {isAnalytics && (
         <>
