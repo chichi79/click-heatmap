@@ -312,22 +312,26 @@ export default function App() {
               <div className="dashboard-logo" aria-hidden="true">
                 <i className="bi bi-bullseye" />
               </div>
-              <div>
+              <div className="dashboard-brand-copy">
                 <h1 className="dashboard-title">Click Heatmap</h1>
-                <p className="dashboard-subtitle mb-0">{modeMeta.subtitle}</p>
+                <p className="dashboard-subtitle mb-0" title={modeMeta.subtitle}>
+                  {modeMeta.subtitle}
+                </p>
               </div>
             </div>
-            {isRealtime && (
-              <LiveStatsBar
-                connected={connected}
-                minuteClicks={stats.minuteClicks}
-                activeSessions={stats.activeSessions}
-                activeVisitors={stats.activeVisitors}
-                windowClicks={stats.windowClicks}
-                windowLabel={realtimeCustomRange ? '선택 기간' : windowLabel(windowPreset)}
-                historical={realtimeCustomRange}
-              />
-            )}
+            <div className="header-stats-slot" aria-hidden={!isRealtime}>
+              {isRealtime && (
+                <LiveStatsBar
+                  connected={connected}
+                  minuteClicks={stats.minuteClicks}
+                  activeSessions={stats.activeSessions}
+                  activeVisitors={stats.activeVisitors}
+                  windowClicks={stats.windowClicks}
+                  windowLabel={realtimeCustomRange ? '선택 기간' : windowLabel(windowPreset)}
+                  historical={realtimeCustomRange}
+                />
+              )}
+            </div>
           </div>
           <ViewModeTabs mode={viewMode} onChange={setViewMode} />
         </div>
