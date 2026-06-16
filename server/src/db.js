@@ -117,4 +117,25 @@ db.exec(`CREATE INDEX IF NOT EXISTS idx_visitor ON events(visitor_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_experiment ON events(experiment_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_variant ON events(variant)`);
 
+function seedDemoExperiment() {
+  const existing = db
+    .prepare(`SELECT id FROM experiments WHERE path = '/demo/' AND status = 'active' LIMIT 1`)
+    .get();
+  if (existing) return;
+
+  db.prepare(
+    `INSERT INTO experiments (name, path, variants, split_json, goal_selector, status, created_at)
+     VALUES (@name, @path, @variants, @splitJson, @goalSelector, 'active', @createdAt)`
+  ).run({
+    name: '로그인 버튼 색상 (데모)',
+    path: '/demo/',
+    variants: JSON.stringify(['A', 'B']),
+    splitJson: JSON.stringify({ A: 50, B: 50 }),
+    goalSelector: '#btn-login',
+    createdAt: Date.now(),
+  });
+}
+
+seedDemoExperiment();
+
 export default db;

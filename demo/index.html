@@ -159,6 +159,23 @@
         background: #c4000f;
       }
 
+      /* A/B variant B: 로그인 버튼 회색 */
+      .login-area .btn-login.ab-variant-b,
+      .login-area .btn-login.ab-variant-b:hover {
+        background: #888;
+        color: #fff;
+      }
+
+      .ab-variant-badge {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 2px 6px;
+        font-size: 10px;
+        background: #f3f4f6;
+        color: #6b7280;
+        border-radius: 4px;
+      }
+
       .login-links {
         margin-top: 6px;
         font-size: 11px;
@@ -607,7 +624,8 @@
         <div class="login-area">
           <input type="text" placeholder="아이디" />
           <input type="password" placeholder="비밀번호" />
-          <button class="btn-login" type="button">로그인</button>
+          <button id="btn-login" class="btn-login" type="button">로그인</button>
+          <div class="ab-variant-badge" id="ab-variant-badge" hidden></div>
           <div class="login-links">
             <a href="#">아이디 찾기</a> / <a href="#">비밀번호 재설정</a> |
             <a href="#"><strong>회원가입</strong></a>
@@ -838,5 +856,41 @@
     </div>
 
     <script src="/heatmap-sdk.js" defer></script>
+    <script>
+      (function () {
+        function applyLoginAbTest() {
+          const variant = window.__heatmap?.getVariant?.();
+          const btn = document.getElementById('btn-login');
+          const badge = document.getElementById('ab-variant-badge');
+          if (!btn || !variant) return false;
+
+          if (variant === 'B') {
+            btn.classList.add('ab-variant-b');
+          } else {
+            btn.classList.remove('ab-variant-b');
+          }
+
+          if (badge) {
+            badge.hidden = false;
+            badge.textContent = 'A/B Variant ' + variant;
+          }
+          return true;
+        }
+
+        function waitForAb() {
+          if (applyLoginAbTest()) return;
+          let tries = 0;
+          const timer = setInterval(function () {
+            if (applyLoginAbTest() || ++tries > 50) clearInterval(timer);
+          }, 100);
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', waitForAb);
+        } else {
+          waitForAb();
+        }
+      })();
+    </script>
   </body>
 </html>
