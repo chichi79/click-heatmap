@@ -305,7 +305,7 @@ export default function App() {
 
   return (
     <div className="dashboard-app min-vh-100">
-      <header className="dashboard-header sticky-top">
+      <header className={`dashboard-header sticky-top${isRealtime ? ' dashboard-header--live' : ''}`}>
         <div className="dashboard-shell">
           <div className="dashboard-brand-row">
             <div className="dashboard-brand">

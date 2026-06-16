@@ -3,7 +3,7 @@ import DashboardCard from './DashboardCard.jsx';
 
 function VariantBar({ label, data, isBaseline }) {
   return (
-    <div className="stat-card accent-indigo h-100">
+    <div className="stat-card accent-indigo">
       <div className="d-flex align-items-center gap-2 mb-3">
         <span className="fw-semibold">{label}</span>
         {isBaseline && <span className="badge text-bg-secondary">기준</span>}
@@ -72,7 +72,7 @@ export default function AbTestPanel({
   }
 
   return (
-    <div>
+    <div className="ab-test-panel">
       <DashboardCard title="새 A/B 실험">
         <form onSubmit={handleCreate}>
           <div className="row g-3">
@@ -135,7 +135,7 @@ export default function AbTestPanel({
           {experiments.map((exp) => (
             <div
               key={exp.id}
-              className={`list-group-item d-flex align-items-center gap-2 px-3 py-3 rounded mb-2 border${
+              className={`list-group-item d-flex align-items-center gap-2 px-3 py-3 rounded border${
                 selectedExperimentId === exp.id ? ' border-primary bg-primary-subtle' : ''
               }`}
             >
@@ -165,6 +165,7 @@ export default function AbTestPanel({
         <DashboardCard
           title={`결과 · ${results.experiment.name}`}
           subtitle={results.experiment.path}
+          className="ab-results-card"
         >
           {results.experiment.goalSelector && (
             <p className="small text-muted mb-3">
@@ -173,11 +174,11 @@ export default function AbTestPanel({
           )}
           <div className="row g-3">
             {results.variants.map((v, i) => (
-              <div className="col-md-6" key={v.variant}>
+              <div className="col-md-6 ab-variant-col" key={v.variant}>
                 <VariantBar label={`Variant ${v.variant}`} data={v} isBaseline={i === 0} />
                 <button
                   type="button"
-                  className="btn btn-outline-primary btn-sm w-100 mt-2"
+                  className="btn btn-outline-primary btn-sm w-100"
                   onClick={() => onViewHeatmap(results.experiment.path, v.variant)}
                 >
                   {v.variant} 히트맵 보기
