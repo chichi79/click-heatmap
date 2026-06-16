@@ -319,17 +319,13 @@ body {
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 0.75rem 1rem;
-  min-height: 3.5rem;
 }
 
 .filter-toolbar-row-primary,
 .filter-toolbar-row-options,
-.filter-toolbar-row-time {
-  min-height: 3.5rem;
-}
-
+.filter-toolbar-row-time,
 .filter-toolbar-row-extra {
-  min-height: 3.5rem;
+  width: 100%;
 }
 
 .filter-row-note {
@@ -389,10 +385,20 @@ body {
   flex-direction: column;
   gap: 0.375rem;
   min-width: 0;
+  align-self: flex-start;
 }
 
 .filter-field-grow {
   flex: 1 1 16rem;
+  width: auto;
+  max-width: 100%;
+}
+
+.filter-toolbar-row-primary .filter-field-grow,
+.filter-toolbar-row-time .filter-field-grow,
+.filter-toolbar-row-extra .filter-field-grow {
+  flex: 1 1 100%;
+  width: 100%;
 }
 
 .filter-field-switch {
@@ -465,7 +471,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex: 1 1 18rem;
+  width: 100%;
   min-width: 0;
 }
 
@@ -488,14 +494,6 @@ body {
 
   .filter-stat-badge {
     max-width: 100%;
-  }
-
-  .filter-toolbar-row,
-  .filter-toolbar-row-primary,
-  .filter-toolbar-row-options,
-  .filter-toolbar-row-time,
-  .filter-toolbar-row-extra {
-    min-height: 0;
   }
 
   .filter-toolbar-row-options {
