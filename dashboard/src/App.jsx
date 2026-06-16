@@ -3,6 +3,7 @@ import FilterPanel from './components/FilterPanel.jsx';
 import HeatmapViewer from './components/HeatmapViewer.jsx';
 import ScrollDepthChart from './components/ScrollDepthChart.jsx';
 import ElementClickRanking from './components/ElementClickRanking.jsx';
+import FeaturesOverview from './components/FeaturesOverview.jsx';
 import ViewModeTabs, { getModeMeta } from './components/ViewModeTabs.jsx';
 import LiveStatsBar from './components/LiveStatsBar.jsx';
 import ClickFeed from './components/ClickFeed.jsx';
@@ -65,7 +66,7 @@ function windowLabel(preset) {
 }
 
 export default function App() {
-  const [viewMode, setViewMode] = useState('realtime');
+  const [viewMode, setViewMode] = useState('overview');
   const [paths, setPaths] = useState([]);
   const [selectedPath, setSelectedPath] = useState('');
   const [pathMetric, setPathMetric] = useState('clicks');
@@ -88,6 +89,7 @@ export default function App() {
   const [variantFilter, setVariantFilter] = useState('all');
 
   const windowMinutes = presetToMinutes(windowPreset);
+  const isOverview = viewMode === 'overview';
   const isRealtime = viewMode === 'realtime';
   const isUx = viewMode === 'ux';
   const isPath = viewMode === 'path';
@@ -339,6 +341,7 @@ export default function App() {
 
       <main className="dashboard-main">
         <div className="dashboard-shell">
+      {!isOverview && (
       <FilterPanel
         mode={viewMode}
         paths={paths}
@@ -361,6 +364,9 @@ export default function App() {
         showVariantFilter={showVariantFilter}
         statLabel={statLabel}
       />
+      )}
+
+      {isOverview && <FeaturesOverview onNavigate={setViewMode} />}
 
       {isAb && (
         <AbTestPanel

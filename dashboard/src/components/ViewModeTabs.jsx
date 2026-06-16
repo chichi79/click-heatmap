@@ -1,3 +1,11 @@
+export const OVERVIEW_TAB = {
+  id: 'overview',
+  label: '기능 소개',
+  shortLabel: '소개',
+  icon: 'bi-stars',
+  subtitle: '구현된 히트맵·분석·경로·A/B 기능을 한눈에 살펴보세요',
+};
+
 export const VIEW_MODES = [
   {
     id: 'realtime',
@@ -37,12 +45,33 @@ export const VIEW_MODES = [
 ];
 
 export function getModeMeta(modeId) {
+  if (modeId === OVERVIEW_TAB.id) return OVERVIEW_TAB;
   return VIEW_MODES.find((m) => m.id === modeId) ?? VIEW_MODES[0];
 }
 
 export default function ViewModeTabs({ mode, onChange }) {
+  const overviewActive = mode === OVERVIEW_TAB.id;
+
   return (
     <nav className="mode-tabs-nav" aria-label="대시보드 모드">
+      <ul className="nav nav-pills mode-tabs mode-tabs-intro flex-nowrap">
+        <li className="nav-item">
+          <button
+            type="button"
+            className={`nav-link mode-tab-intro d-flex align-items-center gap-2${overviewActive ? ' active' : ''}`}
+            onClick={() => onChange(OVERVIEW_TAB.id)}
+            title={OVERVIEW_TAB.subtitle}
+            aria-current={overviewActive ? 'page' : undefined}
+          >
+            <i className={`bi ${OVERVIEW_TAB.icon}`} aria-hidden="true" />
+            <span className="mode-tab-label d-none d-sm-inline">{OVERVIEW_TAB.label}</span>
+            <span className="mode-tab-label d-inline d-sm-none">{OVERVIEW_TAB.shortLabel}</span>
+          </button>
+        </li>
+      </ul>
+
+      <span className="mode-tabs-separator" aria-hidden="true" />
+
       <ul className="nav nav-pills mode-tabs flex-nowrap">
         {VIEW_MODES.map((m) => (
           <li className="nav-item" key={m.id}>
@@ -51,6 +80,7 @@ export default function ViewModeTabs({ mode, onChange }) {
               className={`nav-link d-flex align-items-center gap-2${mode === m.id ? ' active' : ''}`}
               onClick={() => onChange(m.id)}
               title={m.subtitle}
+              aria-current={mode === m.id ? 'page' : undefined}
             >
               <i className={`bi ${m.icon}`} aria-hidden="true" />
               <span className="mode-tab-label d-none d-sm-inline">{m.label}</span>
