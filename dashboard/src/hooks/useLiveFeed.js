@@ -1,32 +1,72 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiUrl, wsUrl } from '../api.js';
 
-function pruneClicks(clicks, windowMinutes) {
+function pruneByWindow(clicks, windowMinutes) {
   const cutoff = Date.now() - windowMinutes * 60 * 1000;
   return clicks.filter((c) => c.ts >= cutoff);
 }
 
-export function useLiveFeed({ path, deviceType, windowMinutes, enabled }) {
+function pruneByRange(clicks, fromEpoch, toEpoch) {
+  return clicks.filter((c) => {
+    if (fromEpoch && c.ts < fromEpoch) return false;
+    if (toEpoch && c.ts > toEpoch) return false;
+    return true;
+  });
+}
+
+export function useLiveFeed({
+  path,
+  deviceType,
+  windowMinutes,
+  from,
+  to,
+  useCustomRange,
+  enabled,
+}) {
   const [clicks, setClicks] = useState([]);
   const [feed, setFeed] = useState([]);
   const [connected, setConnected] = useState(false);
   const wsRef = useRef(null);
   const windowMinutesRef = useRef(windowMinutes);
+  const rangeRef = useRef({ from, to, useCustomRange });
 
   windowMinutesRef.current = windowMinutes;
+  rangeRef.current = { from, to, useCustomRange };
 
-  const addClick = useCallback((click) => {
-    const cutoff = Date.now() - windowMinutesRef.current * 60 * 1000;
-    if (click.ts < cutoff) return;
+  const fromEpoch = useCustomRange && from ? new Date(from).getTime() : null;
+  const toEpoch = useCustomRange && to ? new Date(to).getTime() : null;
+  const liveWs = enabled && !useCustomRange;
 
-    setClicks((prev) => pruneClicks([...prev, click], windowMinutesRef.current));
-    setFeed((prev) =>
-      [{ ...click, _key: `${click.ts}-${click.session}-${click.x}` }, ...prev]
-        .slice(0, 30)
-    );
-  }, []);
+  const prune = useCallback(
+    (rows) => {
+      if (useCustomRange) return pruneByRange(rows, fromEpoch, toEpoch);
+      return pruneByWindow(rows, windowMinutesRef.current);
+    },
+    [useCustomRange, fromEpoch, toEpoch]
+  );
 
-  // 초기 데이터 + 윈도우 변경 시 재로드
+  const addClick = useCallback(
+    (click) => {
+      const { useCustomRange: custom, from: f, to: t } = rangeRef.current;
+      const fromMs = custom && f ? new Date(f).getTime() : null;
+      const toMs = custom && t ? new Date(t).getTime() : null;
+
+      if (custom) {
+        if (fromMs && click.ts < fromMs) return;
+        if (toMs && click.ts > toMs) return;
+      } else {
+        const cutoff = Date.now() - windowMinutesRef.current * 60 * 1000;
+        if (click.ts < cutoff) return;
+      }
+
+      setClicks((prev) => pruneByWindow([...prev, click], windowMinutesRef.current));
+      setFeed((prev) =>
+        [{ ...click, _key: `${click.ts}-${click.session}-${click.x}` }, ...prev].slice(0, 30)
+      );
+    },
+    []
+  );
+
   useEffect(() => {
     if (!enabled || !path) {
       setClicks([]);
@@ -35,15 +75,23 @@ export function useLiveFeed({ path, deviceType, windowMinutes, enabled }) {
     }
 
     let cancelled = false;
-    fetch(
-      apiUrl(
-        `/api/live-recent?path=${encodeURIComponent(path)}&minutes=${windowMinutes}&deviceType=${deviceType}`
-      )
-    )
+    const params = new URLSearchParams({
+      path,
+      deviceType,
+    });
+
+    if (useCustomRange && fromEpoch) {
+      params.set('from', String(fromEpoch));
+      if (toEpoch) params.set('to', String(toEpoch));
+    } else {
+      params.set('minutes', String(windowMinutes));
+    }
+
+    fetch(apiUrl(`/api/live-recent?${params.toString()}`))
       .then((res) => res.json())
       .then((rows) => {
         if (cancelled) return;
-        const pruned = pruneClicks(rows, windowMinutes);
+        const pruned = prune(rows);
         setClicks(pruned);
         setFeed(
           pruned
@@ -63,11 +111,13 @@ export function useLiveFeed({ path, deviceType, windowMinutes, enabled }) {
     return () => {
       cancelled = true;
     };
-  }, [path, deviceType, windowMinutes, enabled]);
+  }, [path, deviceType, windowMinutes, enabled, useCustomRange, fromEpoch, toEpoch, prune]);
 
-  // WebSocket 연결
   useEffect(() => {
-    if (!enabled || !path) return;
+    if (!liveWs || !path) {
+      setConnected(false);
+      return;
+    }
 
     const ws = new WebSocket(wsUrl('/ws/live'));
     wsRef.current = ws;
@@ -93,9 +143,8 @@ export function useLiveFeed({ path, deviceType, windowMinutes, enabled }) {
       ws.close();
       wsRef.current = null;
     };
-  }, [path, deviceType, enabled, addClick]);
+  }, [path, deviceType, liveWs, addClick]);
 
-  // 구독 갱신 (path/device 변경 시 연결 유지)
   useEffect(() => {
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
@@ -103,29 +152,29 @@ export function useLiveFeed({ path, deviceType, windowMinutes, enabled }) {
     }
   }, [path, deviceType]);
 
-  // 오래된 클릭 주기적 제거
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || useCustomRange) return;
     const interval = setInterval(() => {
-      setClicks((prev) => pruneClicks(prev, windowMinutesRef.current));
-      setFeed((prev) => pruneClicks(prev, windowMinutesRef.current).slice(0, 30));
+      setClicks((prev) => pruneByWindow(prev, windowMinutesRef.current));
+      setFeed((prev) => pruneByWindow(prev, windowMinutesRef.current).slice(0, 30));
     }, 5000);
     return () => clearInterval(interval);
-  }, [enabled, windowMinutes]);
+  }, [enabled, useCustomRange, windowMinutes]);
 
   const stats = useMemo(() => {
     const now = Date.now();
     const oneMinAgo = now - 60 * 1000;
-    const windowStart = now - windowMinutes * 60 * 1000;
-    const inWindow = clicks.filter((c) => c.ts >= windowStart);
+    const inWindow = prune(clicks);
     const lastMinute = inWindow.filter((c) => c.ts >= oneMinAgo);
     const sessions = new Set(inWindow.map((c) => c.session).filter(Boolean));
+    const visitors = new Set(inWindow.map((c) => c.visitorId).filter(Boolean));
     return {
       windowClicks: inWindow.length,
       minuteClicks: lastMinute.length,
       activeSessions: sessions.size,
+      activeVisitors: visitors.size,
     };
-  }, [clicks, windowMinutes]);
+  }, [clicks, prune]);
 
-  return { clicks, feed, connected, stats };
+  return { clicks, feed, connected: liveWs && connected, stats };
 }

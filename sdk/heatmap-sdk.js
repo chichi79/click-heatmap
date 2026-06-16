@@ -1,7 +1,55 @@
 // heatmap-sdk.js
 // 삽입: <script src="https://your-internal.server/heatmap-sdk.js" defer></script>
 (function () {
-  const SESSION = crypto.randomUUID();
+  const VISITOR_KEY = 'hm_visitor_id';
+  const VISITOR_TTL = 30 * 24 * 60 * 60 * 1000;
+  const SESSION_KEY = 'hm_session_id';
+  const SESSION_START_KEY = 'hm_session_start';
+
+  function getVisitorId() {
+    try {
+      const raw = localStorage.getItem(VISITOR_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data.id && Date.now() - data.ts < VISITOR_TTL) return data.id;
+      }
+    } catch (e) {
+      /* noop */
+    }
+    const id = crypto.randomUUID();
+    try {
+      localStorage.setItem(VISITOR_KEY, JSON.stringify({ id, ts: Date.now() }));
+    } catch (e) {
+      /* noop */
+    }
+    return id;
+  }
+
+  function getSessionId() {
+    try {
+      let id = sessionStorage.getItem(SESSION_KEY);
+      if (!id) {
+        id = crypto.randomUUID();
+        sessionStorage.setItem(SESSION_KEY, id);
+        sessionStorage.setItem(SESSION_START_KEY, String(Date.now()));
+      }
+      return id;
+    } catch (e) {
+      return crypto.randomUUID();
+    }
+  }
+
+  function getSessionStart() {
+    try {
+      return Number(sessionStorage.getItem(SESSION_START_KEY)) || Date.now();
+    } catch (e) {
+      return Date.now();
+    }
+  }
+
+  const VISITOR_ID = getVisitorId();
+  const SESSION = getSessionId();
+  const SESSION_START = getSessionStart();
 
   const ENDPOINT = (function () {
     const script =
@@ -167,6 +215,51 @@
     if (buf.length >= FLUSH_SIZE) flush();
   }
 
+  function baseEvent(extra) {
+    return {
+      path: location.pathname,
+      session: SESSION,
+      visitorId: VISITOR_ID,
+      ts: Date.now(),
+      ...deviceContext(),
+      selector: null,
+      tagName: null,
+      elementText: null,
+      ...extra,
+    };
+  }
+
+  function trackPageview() {
+    track(
+      baseEvent({
+        type: 'pageview',
+        x: null,
+        y: null,
+      })
+    );
+  }
+
+  function trackSessionEnd() {
+    track(
+      baseEvent({
+        type: 'session_end',
+        x: null,
+        y: null,
+        dwellMs: Date.now() - SESSION_START,
+      })
+    );
+  }
+
+  // ---- 페이지뷰 (최초 + SPA 이동) ----
+  trackPageview();
+
+  const origPushState = history.pushState;
+  history.pushState = function (...args) {
+    origPushState.apply(this, args);
+    trackPageview();
+  };
+  window.addEventListener('popstate', trackPageview);
+
   // ---- 클릭 좌표 + 요소 정보 수집 ----
   document.addEventListener('click', (e) => {
     const meta = getElementMeta(e.target);
@@ -175,10 +268,7 @@
       type: 'click',
       x: coords.x,
       y: coords.y,
-      path: location.pathname,
-      session: SESSION,
-      ts: Date.now(),
-      ...deviceContext(),
+      ...baseEvent(),
       ...meta,
     });
   });
@@ -207,13 +297,7 @@
             type: 'scroll',
             x: null,
             y: depth,
-            path: location.pathname,
-            session: SESSION,
-            ts: Date.now(),
-            ...deviceContext(),
-            selector: null,
-            tagName: null,
-            elementText: null,
+            ...baseEvent(),
           });
         }
         scrollTicking = false;
@@ -350,7 +434,15 @@
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flush();
+    if (document.visibilityState === 'hidden') {
+      trackSessionEnd();
+      flush();
+    }
+  });
+
+  window.addEventListener('pagehide', () => {
+    trackSessionEnd();
+    flush();
   });
 
   window.addEventListener('online', flushOfflineQueue);

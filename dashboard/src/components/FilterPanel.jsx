@@ -1,4 +1,5 @@
 import TimePresets from './TimePresets.jsx';
+import { pathMetricLabel, pathMetricValue } from './AnalyticsPanel.jsx';
 
 const DEVICE_OPTIONS = [
   { value: 'all', label: '전체' },
@@ -7,17 +8,28 @@ const DEVICE_OPTIONS = [
   { value: 'mobile', label: '모바일' },
 ];
 
+const PATH_METRICS = [
+  { value: 'clicks', label: '클릭' },
+  { value: 'sessions', label: '세션' },
+  { value: 'uv', label: 'UV' },
+  { value: 'pageviews', label: 'PV' },
+];
+
 export default function FilterPanel({
   mode,
   paths,
   selectedPath,
   onPathChange,
+  pathMetric,
+  onPathMetricChange,
   from,
   to,
   onFromChange,
   onToChange,
   windowPreset,
   onWindowPresetChange,
+  realtimeCustomRange,
+  onRealtimeCustomRangeChange,
   deviceType,
   onDeviceTypeChange,
   statLabel,
@@ -36,7 +48,22 @@ export default function FilterPanel({
           {paths.length === 0 && <option value="">수집된 데이터 없음</option>}
           {paths.map((p) => (
             <option key={p.path} value={p.path}>
-              {p.path} ({p.count})
+              {p.path} ({pathMetricValue(p, pathMetric)} {pathMetricLabel(pathMetric)})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="filter-field">
+        <label htmlFor="path-metric">URL 표시</label>
+        <select
+          id="path-metric"
+          value={pathMetric}
+          onChange={(e) => onPathMetricChange(e.target.value)}
+        >
+          {PATH_METRICS.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
             </option>
           ))}
         </select>
@@ -59,10 +86,44 @@ export default function FilterPanel({
       </div>
 
       {isRealtime ? (
-        <div className="filter-field filter-field-wide">
-          <label>시간 범위</label>
-          <TimePresets value={windowPreset} onChange={onWindowPresetChange} />
-        </div>
+        <>
+          <div className="filter-field filter-field-wide">
+            <label>시간 범위</label>
+            <TimePresets value={windowPreset} onChange={onWindowPresetChange} />
+          </div>
+          <div className="filter-field">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={realtimeCustomRange}
+                onChange={(e) => onRealtimeCustomRangeChange(e.target.checked)}
+              />
+              기간 지정
+            </label>
+          </div>
+          {realtimeCustomRange && (
+            <>
+              <div className="filter-field">
+                <label htmlFor="rt-from">시작일</label>
+                <input
+                  id="rt-from"
+                  type="datetime-local"
+                  value={from}
+                  onChange={(e) => onFromChange(e.target.value)}
+                />
+              </div>
+              <div className="filter-field">
+                <label htmlFor="rt-to">종료일</label>
+                <input
+                  id="rt-to"
+                  type="datetime-local"
+                  value={to}
+                  onChange={(e) => onToChange(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+        </>
       ) : (
         <>
           <div className="filter-field">
@@ -74,7 +135,6 @@ export default function FilterPanel({
               onChange={(e) => onFromChange(e.target.value)}
             />
           </div>
-
           <div className="filter-field">
             <label htmlFor="to">종료일</label>
             <input

@@ -35,6 +35,20 @@ db.exec(`
     ts              INTEGER NOT NULL,
     UNIQUE(path, device_type)
   );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    session_id       TEXT PRIMARY KEY,
+    visitor_id       TEXT,
+    landing_path     TEXT NOT NULL,
+    started_at       INTEGER NOT NULL,
+    ended_at         INTEGER NOT NULL,
+    last_activity_at INTEGER NOT NULL,
+    pageview_count   INTEGER NOT NULL DEFAULT 0,
+    click_count      INTEGER NOT NULL DEFAULT 0,
+    scroll_count     INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_sessions_visitor ON sessions(visitor_id);
+  CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at);
 `);
 
 function migrateEventsTable() {
@@ -50,6 +64,7 @@ function migrateEventsTable() {
     ['selector', 'TEXT'],
     ['tag_name', 'TEXT'],
     ['element_text', 'TEXT'],
+    ['visitor_id', 'TEXT'],
   ];
   for (const [name, type] of additions) {
     if (!cols.has(name)) {
@@ -73,5 +88,7 @@ function migrateScreenshotsTable() {
 migrateEventsTable();
 migrateScreenshotsTable();
 db.exec(`CREATE INDEX IF NOT EXISTS idx_device_type ON events(device_type)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_session ON events(session)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_visitor ON events(visitor_id)`);
 
 export default db;

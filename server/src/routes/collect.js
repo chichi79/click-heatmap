@@ -4,16 +4,17 @@ import path from 'path';
 import db, { screenshotsDir } from '../db.js';
 import { screenshotFilename } from '../utils.js';
 import { broadcastClick } from '../live.js';
+import { updateSessionsFromEvents } from '../sessions.js';
 
 const router = Router();
 
 const insertStmt = db.prepare(
   `INSERT INTO events (
-     type, x, y, path, session, ts,
+     type, x, y, path, session, visitor_id, ts,
      viewport_width, viewport_height, screen_width, device_pixel_ratio, device_type,
      selector, tag_name, element_text
    ) VALUES (
-     @type, @x, @y, @path, @session, @ts,
+     @type, @x, @y, @path, @session, @visitorId, @ts,
      @viewportWidth, @viewportHeight, @screenWidth, @devicePixelRatio, @deviceType,
      @selector, @tagName, @elementText
    )`
@@ -49,6 +50,7 @@ function normalizeEvent(e) {
     y: typeof e.y === 'number' ? e.y : null,
     path: e.path,
     session: e.session,
+    visitorId: typeof e.visitorId === 'string' ? e.visitorId : e.visitor_id ?? null,
     ts: e.ts,
     viewportWidth: typeof e.viewportWidth === 'number' ? e.viewportWidth : null,
     viewportHeight: typeof e.viewportHeight === 'number' ? e.viewportHeight : null,
@@ -61,15 +63,18 @@ function normalizeEvent(e) {
   };
 }
 
+const ALLOWED_TYPES = new Set(['click', 'scroll', 'pageview', 'session_end']);
+
 router.post('/heatmap', (req, res) => {
   const events = Array.isArray(req.body) ? req.body : [req.body];
 
   const rows = events
-    .filter((e) => e && e.type && e.path && e.session && e.ts)
+    .filter((e) => e && e.type && ALLOWED_TYPES.has(e.type) && e.path && e.session && e.ts)
     .map(normalizeEvent);
 
   if (rows.length) {
     insertMany(rows);
+    updateSessionsFromEvents(rows);
     for (const row of rows) {
       if (row.type === 'click') broadcastClick(row);
     }

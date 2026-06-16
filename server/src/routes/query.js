@@ -25,14 +25,27 @@ function deviceFilter(deviceType, clauses, params) {
 }
 
 router.get('/paths', (req, res) => {
+  const { from, to, deviceType = 'all' } = req.query;
+  const { clauses, params } = timeFilter(from, to);
+  deviceFilter(deviceType, clauses, params);
+
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
   const rows = db
     .prepare(
-      `SELECT path, COUNT(*) as count
+      `SELECT path,
+              SUM(CASE WHEN type = 'click' THEN 1 ELSE 0 END) as clicks,
+              SUM(CASE WHEN type = 'scroll' THEN 1 ELSE 0 END) as scrolls,
+              SUM(CASE WHEN type = 'pageview' THEN 1 ELSE 0 END) as pageviews,
+              COUNT(DISTINCT session) as sessions,
+              COUNT(DISTINCT visitor_id) as uv
        FROM events
+       ${where}
        GROUP BY path
-       ORDER BY count DESC`
+       ORDER BY clicks DESC`
     )
-    .all();
+    .all(params);
+
   res.json(rows);
 });
 
@@ -138,18 +151,31 @@ router.get('/screenshot', (req, res) => {
 });
 
 router.get('/live-recent', (req, res) => {
-  const { path, minutes = '5', deviceType = 'all' } = req.query;
+  const { path, minutes = '5', from, to, deviceType = 'all' } = req.query;
   if (!path) return res.status(400).json({ error: 'path is required' });
 
-  const from = Date.now() - Number(minutes) * 60 * 1000;
-  const clauses = ['path = @path', "type = 'click'", 'ts >= @from', 'x IS NOT NULL', 'y IS NOT NULL'];
-  const params = { path, from };
+  const clauses = ['path = @path', "type = 'click'", 'x IS NOT NULL', 'y IS NOT NULL'];
+  const params = { path };
+
+  if (from) {
+    clauses.push('ts >= @from');
+    params.from = Number(from);
+  } else {
+    clauses.push('ts >= @from');
+    params.from = Date.now() - Number(minutes) * 60 * 1000;
+  }
+
+  if (to) {
+    clauses.push('ts <= @to');
+    params.to = Number(to);
+  }
+
   deviceFilter(deviceType, clauses, params);
 
   const rows = db
     .prepare(
       `SELECT x, y, selector, tag_name as tagName, element_text as elementText,
-              device_type as deviceType, ts, session
+              device_type as deviceType, ts, session, visitor_id as visitorId
        FROM events
        WHERE ${clauses.join(' AND ')}
        ORDER BY ts DESC
@@ -270,6 +296,146 @@ router.get('/timeline', (req, res) => {
     .all({ path, type });
 
   res.json(rows);
+});
+
+router.get('/analytics', (req, res) => {
+  const { path, from, to, deviceType = 'all' } = req.query;
+  if (!path) return res.status(400).json({ error: 'path is required' });
+
+  const { clauses, params } = timeFilter(from, to);
+  deviceFilter(deviceType, clauses, params);
+  clauses.push('path = @path');
+  params.path = path;
+
+  const where = clauses.join(' AND ');
+
+  const totals = db
+    .prepare(
+      `SELECT
+         SUM(CASE WHEN type = 'click' THEN 1 ELSE 0 END) as clicks,
+         SUM(CASE WHEN type = 'scroll' THEN 1 ELSE 0 END) as scrolls,
+         SUM(CASE WHEN type = 'pageview' THEN 1 ELSE 0 END) as pageviews,
+         COUNT(DISTINCT session) as sessions,
+         COUNT(DISTINCT visitor_id) as uv
+       FROM events WHERE ${where}`
+    )
+    .get(params);
+
+  const sessionClauses = ['landing_path = @path'];
+  const sessionParams = { path };
+  if (from) {
+    sessionClauses.push('started_at >= @from');
+    sessionParams.from = Number(from);
+  }
+  if (to) {
+    sessionClauses.push('started_at <= @to');
+    sessionParams.to = Number(to);
+  }
+
+  const sessionStats = db
+    .prepare(
+      `SELECT
+         COUNT(*) as sessionCount,
+         AVG(last_activity_at - started_at) as avgDwellMs,
+         SUM(CASE WHEN pageview_count <= 1 AND click_count = 0
+                   AND (last_activity_at - started_at) < 10000 THEN 1 ELSE 0 END) as bounces
+       FROM sessions
+       WHERE ${sessionClauses.join(' AND ')}`
+    )
+    .get(sessionParams);
+
+  const dailyUv = db
+    .prepare(
+      `SELECT strftime('%Y-%m-%d', ts / 1000, 'unixepoch') as day,
+              COUNT(DISTINCT visitor_id) as uv
+       FROM events
+       WHERE ${where} AND visitor_id IS NOT NULL
+       GROUP BY day
+       ORDER BY day`
+    )
+    .all(params);
+
+  const sessionCount = sessionStats?.sessionCount ?? 0;
+  const bounces = sessionStats?.bounces ?? 0;
+
+  res.json({
+    clicks: totals?.clicks ?? 0,
+    scrolls: totals?.scrolls ?? 0,
+    pageviews: totals?.pageviews ?? 0,
+    sessions: totals?.sessions ?? 0,
+    uv: totals?.uv ?? 0,
+    avgDwellMs: Math.round(sessionStats?.avgDwellMs ?? 0),
+    bounceRate: sessionCount ? +((bounces / sessionCount) * 100).toFixed(1) : 0,
+    dailyUv,
+  });
+});
+
+router.get('/funnel', (req, res) => {
+  const { steps, from, to, deviceType = 'all' } = req.query;
+  if (!steps) return res.status(400).json({ error: 'steps is required (comma-separated paths)' });
+
+  const stepList = String(steps)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (stepList.length < 2) {
+    return res.status(400).json({ error: 'at least 2 steps required' });
+  }
+
+  const { clauses, params } = timeFilter(from, to);
+  deviceFilter(deviceType, clauses, params);
+  clauses.push("type = 'pageview'");
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
+  const pageviews = db
+    .prepare(
+      `SELECT session, path, ts
+       FROM events
+       ${where}
+       ORDER BY session, ts ASC`
+    )
+    .all(params);
+
+  const bySession = new Map();
+  for (const pv of pageviews) {
+    if (!bySession.has(pv.session)) bySession.set(pv.session, []);
+    const list = bySession.get(pv.session);
+    if (list[list.length - 1]?.path !== pv.path) {
+      list.push({ path: pv.path, ts: pv.ts });
+    }
+  }
+
+  const funnel = stepList.map((step, i) => ({
+    step,
+    label: step,
+    count: 0,
+    pct: 0,
+  }));
+
+  let entered = 0;
+  for (const sequence of bySession.values()) {
+    let stepIdx = 0;
+    for (const { path: p } of sequence) {
+      if (stepIdx < stepList.length && p === stepList[stepIdx]) {
+        stepIdx++;
+      }
+    }
+    if (stepIdx > 0) entered += 1;
+    for (let i = 0; i < stepIdx; i++) {
+      funnel[i].count += 1;
+    }
+  }
+
+  const base = funnel[0]?.count || 0;
+  for (const step of funnel) {
+    step.pct = base ? +((step.count / base) * 100).toFixed(1) : 0;
+  }
+
+  res.json({
+    steps: funnel,
+    totalSessions: bySession.size,
+    entered,
+  });
 });
 
 export default router;

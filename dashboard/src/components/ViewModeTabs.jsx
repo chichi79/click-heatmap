@@ -10,6 +10,11 @@ export const VIEW_MODES = [
     subtitle: '실시간 클릭 — 지금 페이지에서 무슨 일이 일어나는지 확인하세요',
   },
   {
+    id: 'analytics',
+    label: 'Analytics',
+    subtitle: 'UV·PV·체류·퍼널 — 방문자 행동을 숫자로 분석합니다',
+  },
+  {
     id: 'path',
     label: 'Path Plot',
     subtitle: '클릭 경로 — 사용자가 어떤 순서로 탐색하는지 봅니다',
