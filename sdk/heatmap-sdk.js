@@ -1,4 +1,4 @@
-// heatmap-sdk.js v1.0.2
+// heatmap-sdk.js v1.0.4
 // 삽입: <script src="https://your-internal.server/heatmap-sdk.js" defer></script>
 (function () {
   const VISITOR_KEY = 'hm_visitor_id';
@@ -268,18 +268,7 @@
   }
 
   function exposeHeatmapApi() {
-    window.__heatmap = {
-      getVariant(experimentId) {
-        const id = Number(experimentId);
-        const found = abAssignments.find((a) => a.experimentId === id);
-        if (found) return found.variant;
-        return abAssignments[0]?.variant ?? null;
-      },
-      getExperiment() {
-        return abAssignments[0] ?? null;
-      },
-      experiments: abAssignments,
-    };
+    refreshHeatmapApi();
   }
 
   async function loadAbConfig() {
@@ -323,9 +312,12 @@
   }
 
   // ---- 페이지뷰 (최초 + SPA 이동) ----
+  let screenshotScheduleGen = 0;
+
   async function onRouteChange() {
     await loadAbConfig();
     trackPageview();
+    scheduleScreenshot();
   }
 
   const origPushState = history.pushState;
@@ -492,22 +484,120 @@
     return canvas;
   }
 
-  async function captureScreenshot() {
-    if (!SERVER_ORIGIN) return;
+  const SCREENSHOT_MAX_ATTEMPTS = 3;
+  const SCREENSHOT_RETRY_MS = [4000, 10000];
+  const SCREENSHOT_DOM_QUIET_MS = 800;
+  const SCREENSHOT_DOM_MAX_WAIT_MS = 12000;
 
-    const ctx = deviceContext();
-    const storageKey = `hm-ss-v5-${location.pathname}-${ctx.deviceType}`;
+  function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function waitForNextFrame() {
+    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }
+
+  async function waitForFonts() {
     try {
-      if (sessionStorage.getItem(storageKey)) return;
+      if (document.fonts?.ready) {
+        await Promise.race([document.fonts.ready, wait(3000)]);
+      }
     } catch (e) {
       /* noop */
     }
+  }
+
+  async function waitForImages(root = document.body) {
+    if (!root) return;
+    const images = [...root.querySelectorAll('img')];
+    const pending = images
+      .filter((img) => !img.complete)
+      .map(
+        (img) =>
+          new Promise((resolve) => {
+            img.addEventListener('load', resolve, { once: true });
+            img.addEventListener('error', resolve, { once: true });
+          })
+      );
+    if (pending.length) {
+      await Promise.race([Promise.all(pending), wait(5000)]);
+    }
+  }
+
+  function waitForDomStable(quietMs = SCREENSHOT_DOM_QUIET_MS, timeoutMs = SCREENSHOT_DOM_MAX_WAIT_MS) {
+    return new Promise((resolve) => {
+      let quietTimer = null;
+      let deadline = null;
+
+      const finish = () => {
+        observer.disconnect();
+        if (quietTimer) clearTimeout(quietTimer);
+        if (deadline) clearTimeout(deadline);
+        resolve();
+      };
+
+      const bump = () => {
+        if (quietTimer) clearTimeout(quietTimer);
+        quietTimer = setTimeout(finish, quietMs);
+      };
+
+      const observer = new MutationObserver(bump);
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        characterData: true,
+      });
+
+      bump();
+      deadline = setTimeout(finish, timeoutMs);
+    });
+  }
+
+  async function waitForPageReady() {
+    await waitForFonts();
+    await waitForDomStable();
+    await waitForImages();
+    await waitForNextFrame();
+    await wait(300);
+  }
+
+  function isPageLikelyIncomplete() {
+    const { pageHeight } = pageMetrics();
+    const text = (document.body?.innerText || '').replace(/\s+/g, ' ').trim();
+    const hasMeaningfulContent = text.length >= 24 || document.querySelector('img, video, canvas, svg, main, article');
+    if (pageHeight < 180 && !hasMeaningfulContent) return true;
+    if (document.querySelector('[aria-busy="true"], [data-loading="true"], .loading, .skeleton')) {
+      return true;
+    }
+    return false;
+  }
+
+  function screenshotStorageKey(deviceType) {
+    return `hm-ss-v5-${location.pathname}-${deviceType}`;
+  }
+
+  function hasScreenshotCaptured(deviceType) {
+    try {
+      return Boolean(sessionStorage.getItem(screenshotStorageKey(deviceType)));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function captureScreenshotOnce() {
+    if (!SERVER_ORIGIN) return false;
+
+    const ctx = deviceContext();
+    const storageKey = screenshotStorageKey(ctx.deviceType);
+    if (hasScreenshotCaptured(ctx.deviceType)) return true;
 
     try {
       await loadScript(SERVER_ORIGIN + '/html2canvas.min.js');
-      if (typeof html2canvas !== 'function') return;
+      if (typeof html2canvas !== 'function') return false;
 
-      await new Promise((r) => setTimeout(r, 1500));
+      await waitForPageReady();
+      if (isPageLikelyIncomplete()) return false;
 
       const { pageWidth, pageHeight } = pageMetrics();
       const scale = Math.min(1, 1400 / window.innerWidth);
@@ -517,7 +607,7 @@
       try {
         image = canvas.toDataURL('image/jpeg', 0.72);
       } catch (e) {
-        return;
+        return false;
       }
 
       const res = await fetch(SERVER_ORIGIN + '/api/screenshot', {
@@ -534,27 +624,75 @@
         }),
       });
 
-      if (res.ok) {
-        try {
-          sessionStorage.setItem(storageKey, '1');
-        } catch (e) {
-          /* noop */
-        }
+      if (!res.ok) return false;
+
+      try {
+        sessionStorage.setItem(storageKey, '1');
+      } catch (e) {
+        /* noop */
       }
+      return true;
     } catch (e) {
-      /* 캡처 실패 시 조용히 무시 */
+      return false;
+    }
+  }
+
+  async function captureScreenshotWithRetries() {
+    if (!SERVER_ORIGIN) return;
+    if (hasScreenshotCaptured(deviceContext().deviceType)) return;
+
+    for (let attempt = 0; attempt < SCREENSHOT_MAX_ATTEMPTS; attempt++) {
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, SCREENSHOT_RETRY_MS[attempt - 1] ?? 10000));
+        if (hasScreenshotCaptured(deviceContext().deviceType)) return;
+      }
+
+      if (await captureScreenshotOnce()) return;
     }
   }
 
   function scheduleScreenshot() {
     if (!SERVER_ORIGIN) return;
-    const run = () => setTimeout(captureScreenshot, 500);
+    const gen = ++screenshotScheduleGen;
+    const run = () => {
+      if (gen !== screenshotScheduleGen) return;
+      setTimeout(() => {
+        if (gen !== screenshotScheduleGen) return;
+        captureScreenshotWithRetries();
+      }, 500);
+    };
     if ('requestIdleCallback' in window) {
       requestIdleCallback(run, { timeout: 4000 });
     } else {
       run();
     }
   }
+
+  function refreshHeatmapApi() {
+    window.__heatmap = {
+      ...(window.__heatmap || {}),
+      getVariant(experimentId) {
+        const id = Number(experimentId);
+        const found = abAssignments.find((a) => a.experimentId === id);
+        if (found) return found.variant;
+        return abAssignments[0]?.variant ?? null;
+      },
+      getExperiment() {
+        return abAssignments[0] ?? null;
+      },
+      experiments: abAssignments,
+      /** SPA 등에서 렌더 완료 후 호출하면 스크린샷 캡처를 다시 시도합니다. */
+      notifyPageReady() {
+        scheduleScreenshot();
+      },
+      /** 수동으로 스크린샷 캡처를 시도합니다 (성공 시 sessionStorage에 기록). */
+      captureScreenshot() {
+        return captureScreenshotWithRetries();
+      },
+    };
+  }
+
+  refreshHeatmapApi();
 
   if (document.readyState === 'complete') {
     scheduleScreenshot();
