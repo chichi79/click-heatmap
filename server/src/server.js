@@ -25,6 +25,10 @@ app.use('/api', collectRouter);
 app.use('/api', queryRouter);
 app.use('/api', abRouter);
 
+app.get('/heatmap-sdk.js', (_req, res, next) => {
+  res.set('Cache-Control', 'no-cache');
+  next();
+});
 app.use('/heatmap-sdk.js', express.static(path.join(__dirname, '../../sdk/heatmap-sdk.js')));
 app.use(
   '/html2canvas.min.js',

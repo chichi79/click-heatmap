@@ -1,4 +1,4 @@
-// heatmap-sdk.js
+// heatmap-sdk.js v1.0.2
 // 삽입: <script src="https://your-internal.server/heatmap-sdk.js" defer></script>
 (function () {
   const VISITOR_KEY = 'hm_visitor_id';
@@ -8,11 +8,12 @@
 
   function createId() {
     try {
-      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return crypto.randomUUID();
+      const randomUUID = globalThis.crypto?.randomUUID;
+      if (typeof randomUUID === 'function') {
+        return randomUUID.call(globalThis.crypto);
       }
     } catch (e) {
-      /* secure context가 아니면 randomUUID 사용 불가 */
+      /* HTTP 등 비보안 컨텍스트에서는 randomUUID 호출 불가 */
     }
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
       const r = (Math.random() * 16) | 0;
