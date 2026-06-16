@@ -648,11 +648,14 @@ body {
   overflow: hidden;
 }
 
-.grid-live .card-feed .click-feed {
-  max-height: none;
+.grid-live .card-feed > .card-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+.grid-live .card-feed .click-feed {
+  max-height: none;
 }
 
 @media (max-width: 991.98px) {
