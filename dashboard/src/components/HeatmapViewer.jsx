@@ -4,8 +4,12 @@ function renderHeatmap(ctx, clicks, width, height, liveMode) {
   ctx.clearRect(0, 0, width, height);
   if (!width || !height || !clicks.length) return;
 
-  const radius = Math.max(20, Math.max(width, height) * (liveMode ? 0.025 : 0.02));
-  const alpha = liveMode ? 0.45 : 0.35;
+  const radius = liveMode
+    ? Math.max(18, Math.min(44, width * 0.045))
+    : Math.max(14, Math.min(32, width * 0.038));
+
+  const densityFactor = Math.sqrt(clicks.length / 40 + 1);
+  const centerAlpha = (liveMode ? 0.42 : 0.2) / densityFactor;
 
   for (const click of clicks) {
     const x = Number(click.x);
@@ -16,12 +20,15 @@ function renderHeatmap(ctx, clicks, width, height, liveMode) {
     const py = (y / 100) * height;
 
     const grad = ctx.createRadialGradient(px, py, 0, px, py, radius);
-    grad.addColorStop(0, `rgba(255, 20, 0, ${alpha})`);
-    grad.addColorStop(0.5, `rgba(255, 60, 0, ${alpha * 0.4})`);
+    grad.addColorStop(0, `rgba(255, 30, 0, ${centerAlpha})`);
+    grad.addColorStop(0.5, `rgba(255, 60, 0, ${centerAlpha * 0.35})`);
     grad.addColorStop(1, 'rgba(255, 0, 0, 0)');
     ctx.fillStyle = grad;
     ctx.fillRect(px - radius, py - radius, radius * 2, radius * 2);
   }
+
+  const showDots = liveMode || clicks.length <= 100;
+  if (!showDots) return;
 
   for (const click of clicks) {
     const x = Number(click.x);
@@ -33,7 +40,7 @@ function renderHeatmap(ctx, clicks, width, height, liveMode) {
 
     ctx.beginPath();
     ctx.arc(px, py, liveMode ? 4 : 3, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(220, 20, 0, 0.9)';
+    ctx.fillStyle = liveMode ? 'rgba(220, 20, 0, 0.9)' : 'rgba(220, 20, 0, 0.65)';
     ctx.fill();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = 1;
