@@ -20,11 +20,7 @@ export default function FunnelPanel({ data, steps, onStepsChange, onAnalyze }) {
         </div>
       </div>
 
-      {!data && (
-        <div className="text-center text-muted py-4 small">
-          퍼널 단계를 입력하고 분석을 누르세요.
-        </div>
-      )}
+      {!data && <div className="empty-state">퍼널 단계를 입력하고 분석을 누르세요.</div>}
 
       {data && (
         <>

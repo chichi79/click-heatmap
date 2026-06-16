@@ -10,6 +10,7 @@ import PathPlot from './components/PathPlot.jsx';
 import AnalyticsPanel from './components/AnalyticsPanel.jsx';
 import FunnelPanel from './components/FunnelPanel.jsx';
 import AbTestPanel from './components/AbTestPanel.jsx';
+import DashboardCard from './components/DashboardCard.jsx';
 import { presetToMinutes, WINDOW_PRESETS } from './components/TimePresets.jsx';
 import { useLiveFeed } from './hooks/useLiveFeed.js';
 import { apiUrl } from './api.js';
@@ -303,33 +304,37 @@ export default function App() {
   ]);
 
   return (
-    <div className="min-vh-100">
-      <header className="bg-white border-bottom shadow-sm sticky-top">
-        <div className="container-fluid px-3 px-lg-4 py-3">
-          <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-lg-between gap-3">
-            <div>
-              <h1 className="h4 mb-1 fw-semibold text-dark">Click Heatmap Dashboard</h1>
-              <p className="text-muted small mb-0">{modeMeta.subtitle}</p>
+    <div className="dashboard-app min-vh-100">
+      <header className="dashboard-header sticky-top">
+        <div className="dashboard-shell">
+          <div className="dashboard-brand-row">
+            <div className="dashboard-brand">
+              <div className="dashboard-logo" aria-hidden="true">
+                <i className="bi bi-bullseye" />
+              </div>
+              <div>
+                <h1 className="dashboard-title">Click Heatmap</h1>
+                <p className="dashboard-subtitle mb-0">{modeMeta.subtitle}</p>
+              </div>
             </div>
-            <ViewModeTabs mode={viewMode} onChange={setViewMode} />
+            {isRealtime && (
+              <LiveStatsBar
+                connected={connected}
+                minuteClicks={stats.minuteClicks}
+                activeSessions={stats.activeSessions}
+                activeVisitors={stats.activeVisitors}
+                windowClicks={stats.windowClicks}
+                windowLabel={realtimeCustomRange ? '선택 기간' : windowLabel(windowPreset)}
+                historical={realtimeCustomRange}
+              />
+            )}
           </div>
+          <ViewModeTabs mode={viewMode} onChange={setViewMode} />
         </div>
       </header>
 
-      <main className="container-fluid px-3 px-lg-4 py-4">
-
-      {isRealtime && (
-        <LiveStatsBar
-          connected={connected}
-          minuteClicks={stats.minuteClicks}
-          activeSessions={stats.activeSessions}
-          activeVisitors={stats.activeVisitors}
-          windowClicks={stats.windowClicks}
-          windowLabel={realtimeCustomRange ? '선택 기간' : windowLabel(windowPreset)}
-          historical={realtimeCustomRange}
-        />
-      )}
-
+      <main className="dashboard-main">
+        <div className="dashboard-shell">
       <FilterPanel
         mode={viewMode}
         paths={paths}
@@ -369,88 +374,58 @@ export default function App() {
 
       {isAnalytics && (
         <>
-          <div className="card border-0 shadow-sm mb-4">
-            <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
-              <h2 className="h6 mb-0 fw-semibold">방문 분석 · {selectedPath || 'URL 선택'}</h2>
-            </div>
-            <div className="card-body">
-              <AnalyticsPanel data={analytics} />
-            </div>
-          </div>
-          <div className="card border-0 shadow-sm mb-4">
-            <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
-              <h2 className="h6 mb-0 fw-semibold">퍼널 분석</h2>
-            </div>
-            <div className="card-body">
-              <FunnelPanel
-                data={funnel}
-                steps={funnelSteps}
-                onStepsChange={setFunnelSteps}
-                onAnalyze={loadFunnel}
-              />
-            </div>
-          </div>
+          <DashboardCard title={`방문 분석 · ${selectedPath || 'URL 선택'}`}>
+            <AnalyticsPanel data={analytics} />
+          </DashboardCard>
+          <DashboardCard title="퍼널 분석">
+            <FunnelPanel
+              data={funnel}
+              steps={funnelSteps}
+              onStepsChange={setFunnelSteps}
+              onAnalyze={loadFunnel}
+            />
+          </DashboardCard>
         </>
       )}
 
       {isPath && (
-        <div className="card border-0 shadow-sm mb-4">
-          <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
-            <h2 className="h6 mb-0 fw-semibold">Path Plot</h2>
-          </div>
-          <div className="card-body">
-            <PathPlot data={pathPlot} />
-          </div>
-        </div>
+        <DashboardCard title="Path Plot">
+          <PathPlot data={pathPlot} />
+        </DashboardCard>
       )}
 
       {(isUx || isRealtime) && (
         <div className={`grid${isRealtime ? ' grid-live' : ''}`}>
-          <div className={`card border-0 shadow-sm mb-4 mb-lg-0${isRealtime ? ' card-heatmap' : ''}`}>
-            <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
-              <h2 className="h6 mb-0 fw-semibold">{isRealtime ? 'RealTime 히트맵' : 'UX 히트맵'}</h2>
-            </div>
-            <div className="card-body">
-              <HeatmapViewer
-                clicks={heatmapClicks}
-                screenshot={screenshot}
-                liveMode={isRealtime}
-              />
-            </div>
-          </div>
+          <DashboardCard
+            title={isRealtime ? 'RealTime 히트맵' : 'UX 히트맵'}
+            className={`mb-4 mb-lg-0${isRealtime ? ' card-heatmap' : ''}`}
+            bodyClassName="pb-3"
+          >
+            <HeatmapViewer
+              clicks={heatmapClicks}
+              screenshot={screenshot}
+              liveMode={isRealtime}
+            />
+          </DashboardCard>
 
           {isRealtime ? (
-            <div className="card border-0 shadow-sm card-feed">
-              <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
-                <h2 className="h6 mb-0 fw-semibold">방금 클릭됨</h2>
-              </div>
-              <div className="card-body pt-2">
-                <ClickFeed items={feed} />
-              </div>
-            </div>
+            <DashboardCard title="방금 클릭됨" className="card-feed" bodyClassName="pt-0">
+              <ClickFeed items={feed} />
+            </DashboardCard>
           ) : (
-            <div className="card border-0 shadow-sm mb-4 mb-lg-0">
-              <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
-                <h2 className="h6 mb-0 fw-semibold">스크롤 깊이</h2>
-              </div>
-              <div className="card-body">
-                <ScrollDepthChart data={scrollDepth.data} total={scrollDepth.total} />
-              </div>
-            </div>
+            <DashboardCard title="스크롤 깊이" className="mb-4 mb-lg-0">
+              <ScrollDepthChart data={scrollDepth.data} total={scrollDepth.total} />
+            </DashboardCard>
           )}
         </div>
       )}
 
       {isUx && (
-        <div className="card border-0 shadow-sm mt-4">
-          <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
-            <h2 className="h6 mb-0 fw-semibold">클릭 요소 랭킹</h2>
-          </div>
-          <div className="card-body">
-            <ElementClickRanking elements={elements} />
-          </div>
-        </div>
+        <DashboardCard title="클릭 요소 랭킹" className="mt-1">
+          <ElementClickRanking elements={elements} />
+        </DashboardCard>
       )}
+        </div>
       </main>
     </div>
   );

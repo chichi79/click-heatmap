@@ -18,11 +18,7 @@ export default function ClickFeed({ items }) {
   }, []);
 
   if (!items.length) {
-    return (
-      <div className="text-center text-muted py-4 small">
-        아직 클릭이 없습니다. 데모 페이지에서 클릭해 보세요.
-      </div>
-    );
+    return <div className="empty-state">아직 클릭이 없습니다. 데모 페이지에서 클릭해 보세요.</div>;
   }
 
   return (

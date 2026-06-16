@@ -5,6 +5,16 @@ const METRIC_LABELS = {
   pageviews: 'PV',
 };
 
+const METRIC_ACCENTS = {
+  PV: 'accent-blue',
+  UV: 'accent-indigo',
+  세션: 'accent-violet',
+  클릭: 'accent-rose',
+  스크롤: 'accent-teal',
+  '평균 체류': 'accent-amber',
+  이탈률: 'accent-slate',
+};
+
 export function pathMetricLabel(metric) {
   return METRIC_LABELS[metric] ?? '클릭';
 }
@@ -18,7 +28,7 @@ export function pathMetricValue(row, metric) {
 
 export default function AnalyticsPanel({ data }) {
   if (!data) {
-    return <div className="text-center text-muted py-4 small">분석 데이터를 불러오는 중…</div>;
+    return <div className="empty-state">분석 데이터를 불러오는 중…</div>;
   }
 
   const cards = [
@@ -33,14 +43,12 @@ export default function AnalyticsPanel({ data }) {
 
   return (
     <div>
-      <div className="row row-cols-2 row-cols-sm-3 row-cols-lg-4 g-3 mb-4">
+      <div className="row row-cols-2 row-cols-sm-3 row-cols-xl-4 g-3 mb-4">
         {cards.map((c) => (
           <div className="col" key={c.label}>
-            <div className="card h-100 border bg-light-subtle">
-              <div className="card-body py-3">
-                <div className="small text-muted mb-1">{c.label}</div>
-                <div className="fs-5 fw-semibold">{c.value}</div>
-              </div>
+            <div className={`stat-card ${METRIC_ACCENTS[c.label] ?? ''}`}>
+              <div className="stat-card-label">{c.label}</div>
+              <div className="stat-card-value">{c.value}</div>
             </div>
           </div>
         ))}
@@ -49,17 +57,24 @@ export default function AnalyticsPanel({ data }) {
       {data.dailyUv?.length > 0 && (
         <div>
           <h3 className="h6 fw-semibold mb-3">일별 UV</h3>
-          <ul className="list-group list-group-flush border rounded">
-            {data.dailyUv.map((d) => (
-              <li
-                key={d.day}
-                className="list-group-item d-flex justify-content-between align-items-center py-2"
-              >
-                <span className="text-muted small">{d.day}</span>
-                <strong>{d.uv}</strong>
-              </li>
-            ))}
-          </ul>
+          <div className="table-responsive border rounded">
+            <table className="table table-sm table-hover mb-0 align-middle">
+              <thead className="table-light">
+                <tr>
+                  <th>날짜</th>
+                  <th className="text-end">UV</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.dailyUv.map((d) => (
+                  <tr key={d.day}>
+                    <td className="text-muted">{d.day}</td>
+                    <td className="text-end fw-semibold">{d.uv}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

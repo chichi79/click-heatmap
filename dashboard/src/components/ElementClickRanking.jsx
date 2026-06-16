@@ -1,6 +1,6 @@
 export default function ElementClickRanking({ elements }) {
   if (!elements.length) {
-    return <div className="text-center text-muted py-4 small">클릭 요소 데이터가 없습니다</div>;
+    return <div className="empty-state">클릭 요소 데이터가 없습니다</div>;
   }
 
   return (

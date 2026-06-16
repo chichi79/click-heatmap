@@ -15,9 +15,9 @@ const PATH_METRICS = [
   { value: 'pageviews', label: 'PV' },
 ];
 
-function ToggleGroup({ options, value, onChange }) {
+function ToggleGroup({ options, value, onChange, ariaLabel }) {
   return (
-    <div className="btn-group btn-group-sm" role="group">
+    <div className="btn-group btn-group-sm filter-toggle" role="group" aria-label={ariaLabel}>
       {options.map((opt) => (
         <button
           key={opt.value}
@@ -28,6 +28,15 @@ function ToggleGroup({ options, value, onChange }) {
           {opt.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function FilterGroup({ label, children, className = '' }) {
+  return (
+    <div className={`filter-group ${className}`.trim()}>
+      <span className="filter-group-label">{label}</span>
+      {children}
     </div>
   );
 }
@@ -55,57 +64,69 @@ export default function FilterPanel({
   statLabel,
 }) {
   const isRealtime = mode === 'realtime';
+  const isAb = mode === 'ab';
 
   return (
-    <div className="card border-0 shadow-sm mb-4">
+    <div className="card dashboard-card filter-panel border-0 shadow-sm mb-4">
+      <div className="card-header bg-transparent border-bottom d-flex align-items-center justify-content-between gap-2 py-3">
+        <div className="d-flex align-items-center gap-2">
+          <i className="bi bi-funnel text-primary" aria-hidden="true" />
+          <span className="fw-semibold small">필터</span>
+        </div>
+        <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-normal">
+          {statLabel}
+        </span>
+      </div>
       <div className="card-body">
-        <div className="row g-3 align-items-end">
-          <div className="col-md-6 col-lg-4">
-            <label htmlFor="url-picker" className="form-label small text-muted mb-1">
-              URL
-            </label>
-            <select
-              id="url-picker"
-              className="form-select form-select-sm"
-              value={selectedPath}
-              onChange={(e) => onPathChange(e.target.value)}
-            >
-              {paths.length === 0 && <option value="">수집된 데이터 없음</option>}
-              {paths.map((p) => (
-                <option key={p.path} value={p.path}>
-                  {p.path} ({pathMetricValue(p, pathMetric)} {pathMetricLabel(pathMetric)})
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="filter-grid">
+          {!isAb && (
+            <FilterGroup label="URL" className="filter-url">
+              <select
+                id="url-picker"
+                className="form-select form-select-sm"
+                value={selectedPath}
+                onChange={(e) => onPathChange(e.target.value)}
+              >
+                {paths.length === 0 && <option value="">수집된 데이터 없음</option>}
+                {paths.map((p) => (
+                  <option key={p.path} value={p.path}>
+                    {p.path} ({pathMetricValue(p, pathMetric)} {pathMetricLabel(pathMetric)})
+                  </option>
+                ))}
+              </select>
+            </FilterGroup>
+          )}
 
-          <div className="col-md-3 col-lg-2">
-            <label htmlFor="path-metric" className="form-label small text-muted mb-1">
-              URL 표시
-            </label>
-            <select
-              id="path-metric"
-              className="form-select form-select-sm"
-              value={pathMetric}
-              onChange={(e) => onPathMetricChange(e.target.value)}
-            >
-              {PATH_METRICS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!isAb && (
+            <FilterGroup label="URL 표시">
+              <select
+                id="path-metric"
+                className="form-select form-select-sm"
+                value={pathMetric}
+                onChange={(e) => onPathMetricChange(e.target.value)}
+              >
+                {PATH_METRICS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </FilterGroup>
+          )}
 
-          <div className="col-md-6 col-lg-3">
-            <label className="form-label small text-muted mb-1 d-block">디바이스</label>
-            <ToggleGroup options={DEVICE_OPTIONS} value={deviceType} onChange={onDeviceTypeChange} />
-          </div>
+          <FilterGroup label="디바이스">
+            <ToggleGroup
+              ariaLabel="디바이스"
+              options={DEVICE_OPTIONS}
+              value={deviceType}
+              onChange={onDeviceTypeChange}
+            />
+          </FilterGroup>
 
           {showVariantFilter && (
-            <div className="col-md-6 col-lg-3">
-              <label className="form-label small text-muted mb-1 d-block">Variant</label>
+            <FilterGroup label="Variant">
               <ToggleGroup
+                ariaLabel="Variant"
                 options={[
                   { value: 'all', label: '전체' },
                   { value: 'A', label: 'A' },
@@ -114,35 +135,32 @@ export default function FilterPanel({
                 value={variant}
                 onChange={onVariantChange}
               />
-            </div>
+            </FilterGroup>
           )}
 
           {isRealtime ? (
             <>
-              <div className="col-12">
-                <label className="form-label small text-muted mb-1 d-block">시간 범위</label>
+              <FilterGroup label="시간 범위" className="filter-span-wide">
                 <TimePresets value={windowPreset} onChange={onWindowPresetChange} />
-              </div>
-              <div className="col-md-4 col-lg-3">
-                <div className="form-check mt-1">
+              </FilterGroup>
+              <FilterGroup label="기간 지정" className="filter-check">
+                <div className="form-check form-switch mb-0">
                   <input
                     className="form-check-input"
                     type="checkbox"
+                    role="switch"
                     id="rt-custom-range"
                     checked={realtimeCustomRange}
                     onChange={(e) => onRealtimeCustomRangeChange(e.target.checked)}
                   />
                   <label className="form-check-label small" htmlFor="rt-custom-range">
-                    기간 지정
+                    사용
                   </label>
                 </div>
-              </div>
+              </FilterGroup>
               {realtimeCustomRange && (
                 <>
-                  <div className="col-md-4 col-lg-3">
-                    <label htmlFor="rt-from" className="form-label small text-muted mb-1">
-                      시작일
-                    </label>
+                  <FilterGroup label="시작">
                     <input
                       id="rt-from"
                       type="datetime-local"
@@ -150,11 +168,8 @@ export default function FilterPanel({
                       value={from}
                       onChange={(e) => onFromChange(e.target.value)}
                     />
-                  </div>
-                  <div className="col-md-4 col-lg-3">
-                    <label htmlFor="rt-to" className="form-label small text-muted mb-1">
-                      종료일
-                    </label>
+                  </FilterGroup>
+                  <FilterGroup label="종료">
                     <input
                       id="rt-to"
                       type="datetime-local"
@@ -162,16 +177,13 @@ export default function FilterPanel({
                       value={to}
                       onChange={(e) => onToChange(e.target.value)}
                     />
-                  </div>
+                  </FilterGroup>
                 </>
               )}
             </>
           ) : (
             <>
-              <div className="col-md-4 col-lg-3">
-                <label htmlFor="from" className="form-label small text-muted mb-1">
-                  시작일
-                </label>
+              <FilterGroup label="시작">
                 <input
                   id="from"
                   type="datetime-local"
@@ -179,11 +191,8 @@ export default function FilterPanel({
                   value={from}
                   onChange={(e) => onFromChange(e.target.value)}
                 />
-              </div>
-              <div className="col-md-4 col-lg-3">
-                <label htmlFor="to" className="form-label small text-muted mb-1">
-                  종료일
-                </label>
+              </FilterGroup>
+              <FilterGroup label="종료">
                 <input
                   id="to"
                   type="datetime-local"
@@ -191,13 +200,9 @@ export default function FilterPanel({
                   value={to}
                   onChange={(e) => onToChange(e.target.value)}
                 />
-              </div>
+              </FilterGroup>
             </>
           )}
-
-          <div className="col-12">
-            <span className="badge text-bg-light border text-secondary fw-normal">{statLabel}</span>
-          </div>
         </div>
       </div>
     </div>

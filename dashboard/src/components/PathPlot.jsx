@@ -24,7 +24,7 @@ function PathFlow({ steps }) {
 export default function PathPlot({ data }) {
   if (!data || data.totalSessions === 0) {
     return (
-      <div className="text-center text-muted py-4 small">
+      <div className="empty-state">
         분석할 클릭 경로가 없습니다. 같은 페이지에서 2회 이상 클릭한 세션이 필요합니다.
       </div>
     );
