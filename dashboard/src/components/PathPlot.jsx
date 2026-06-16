@@ -24,7 +24,7 @@ function PathFlow({ steps }) {
 export default function PathPlot({ data }) {
   if (!data || data.totalSessions === 0) {
     return (
-      <div className="path-empty">
+      <div className="text-center text-muted py-4 small">
         분석할 클릭 경로가 없습니다. 같은 페이지에서 2회 이상 클릭한 세션이 필요합니다.
       </div>
     );
@@ -32,12 +32,12 @@ export default function PathPlot({ data }) {
 
   return (
     <div className="path-plot">
-      <p className="path-summary">
+      <p className="text-muted small mb-4">
         {data.totalSessions}개 세션 · {data.totalClicks}건 클릭 분석
       </p>
 
-      <section className="path-section">
-        <h3>인기 클릭 경로 Top {data.paths.length}</h3>
+      <section className="path-section mb-4">
+        <h3 className="h6 fw-semibold mb-3">인기 클릭 경로 Top {data.paths.length}</h3>
         <ul className="path-ranking">
           {data.paths.map((path) => (
             <li key={path.rank} className="path-ranking-item">
@@ -54,7 +54,7 @@ export default function PathPlot({ data }) {
       </section>
 
       <section className="path-section">
-        <h3>최근 세션 여정</h3>
+        <h3 className="h6 fw-semibold mb-3">최근 세션 여정</h3>
         <ul className="path-sessions">
           {data.sessions.map((s) => (
             <li key={s.session} className="path-session-item">

@@ -18,7 +18,7 @@ export function pathMetricValue(row, metric) {
 
 export default function AnalyticsPanel({ data }) {
   if (!data) {
-    return <div className="analytics-empty">분석 데이터를 불러오는 중…</div>;
+    return <div className="text-center text-muted py-4 small">분석 데이터를 불러오는 중…</div>;
   }
 
   const cards = [
@@ -32,23 +32,30 @@ export default function AnalyticsPanel({ data }) {
   ];
 
   return (
-    <div className="analytics-panel">
-      <div className="analytics-cards">
+    <div>
+      <div className="row row-cols-2 row-cols-sm-3 row-cols-lg-4 g-3 mb-4">
         {cards.map((c) => (
-          <div key={c.label} className="analytics-card">
-            <span className="analytics-card-label">{c.label}</span>
-            <strong className="analytics-card-value">{c.value}</strong>
+          <div className="col" key={c.label}>
+            <div className="card h-100 border bg-light-subtle">
+              <div className="card-body py-3">
+                <div className="small text-muted mb-1">{c.label}</div>
+                <div className="fs-5 fw-semibold">{c.value}</div>
+              </div>
+            </div>
           </div>
         ))}
       </div>
 
       {data.dailyUv?.length > 0 && (
-        <div className="analytics-daily">
-          <h3>일별 UV</h3>
-          <ul className="daily-uv-list">
+        <div>
+          <h3 className="h6 fw-semibold mb-3">일별 UV</h3>
+          <ul className="list-group list-group-flush border rounded">
             {data.dailyUv.map((d) => (
-              <li key={d.day}>
-                <span>{d.day}</span>
+              <li
+                key={d.day}
+                className="list-group-item d-flex justify-content-between align-items-center py-2"
+              >
+                <span className="text-muted small">{d.day}</span>
                 <strong>{d.uv}</strong>
               </li>
             ))}

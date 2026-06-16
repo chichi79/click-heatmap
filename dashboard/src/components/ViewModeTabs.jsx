@@ -6,7 +6,7 @@ export const VIEW_MODES = [
   },
   {
     id: 'realtime',
-    label: 'RealTime Heatmap',
+    label: 'RealTime',
     subtitle: '실시간 클릭 — 지금 페이지에서 무슨 일이 일어나는지 확인하세요',
   },
   {
@@ -32,18 +32,19 @@ export function getModeMeta(modeId) {
 
 export default function ViewModeTabs({ mode, onChange }) {
   return (
-    <div className="view-mode-tabs">
+    <ul className="nav nav-pills flex-nowrap gap-1 overflow-auto pb-1">
       {VIEW_MODES.map((m) => (
-        <button
-          key={m.id}
-          type="button"
-          className={mode === m.id ? 'active' : ''}
-          onClick={() => onChange(m.id)}
-          title={m.subtitle}
-        >
-          {m.label}
-        </button>
+        <li className="nav-item" key={m.id}>
+          <button
+            type="button"
+            className={`nav-link${mode === m.id ? ' active' : ''}`}
+            onClick={() => onChange(m.id)}
+            title={m.subtitle}
+          >
+            {m.label}
+          </button>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

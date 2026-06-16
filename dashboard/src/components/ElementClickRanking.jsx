@@ -1,34 +1,34 @@
 export default function ElementClickRanking({ elements }) {
   if (!elements.length) {
-    return <div className="element-empty">클릭 요소 데이터가 없습니다</div>;
+    return <div className="text-center text-muted py-4 small">클릭 요소 데이터가 없습니다</div>;
   }
 
   return (
-    <div className="element-table-wrap">
-      <table className="element-table">
-        <thead>
+    <div className="table-responsive">
+      <table className="table table-sm table-hover align-middle mb-0">
+        <thead className="table-light">
           <tr>
             <th>#</th>
             <th>태그</th>
             <th>선택자</th>
             <th>텍스트</th>
-            <th>클릭 수</th>
+            <th className="text-end">클릭 수</th>
           </tr>
         </thead>
         <tbody>
           {elements.map((el, i) => (
             <tr key={`${el.selector}-${i}`}>
-              <td>{i + 1}</td>
+              <td className="text-muted">{i + 1}</td>
               <td>
-                <code>{el.tagName || '-'}</code>
+                <code className="small">{el.tagName || '-'}</code>
               </td>
               <td className="selector-cell" title={el.selector}>
-                <code>{el.selector}</code>
+                <code className="small text-break">{el.selector}</code>
               </td>
-              <td className="text-cell" title={el.elementText}>
+              <td className="text-cell text-muted small" title={el.elementText}>
                 {el.elementText || '-'}
               </td>
-              <td className="count-cell">{el.count}</td>
+              <td className="text-end fw-semibold text-primary">{el.count}</td>
             </tr>
           ))}
         </tbody>

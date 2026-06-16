@@ -13,7 +13,7 @@ export default function ScrollDepthChart({ data, total }) {
 
   return (
     <div>
-      <p style={{ margin: '0 0 8px', fontSize: 13, color: '#6b7280' }}>
+      <p className="text-muted small mb-2">
         스크롤 깊이별 도달 세션 비율 (총 {total}개 세션)
       </p>
       {!hasData ? (

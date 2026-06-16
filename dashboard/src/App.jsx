@@ -303,14 +303,20 @@ export default function App() {
   ]);
 
   return (
-    <div className="app">
-      <div className="app-header">
-        <div>
-          <h1>Click Heatmap Dashboard</h1>
-          <p className="subtitle">{modeMeta.subtitle}</p>
+    <div className="min-vh-100">
+      <header className="bg-white border-bottom shadow-sm sticky-top">
+        <div className="container-fluid px-3 px-lg-4 py-3">
+          <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-lg-between gap-3">
+            <div>
+              <h1 className="h4 mb-1 fw-semibold text-dark">Click Heatmap Dashboard</h1>
+              <p className="text-muted small mb-0">{modeMeta.subtitle}</p>
+            </div>
+            <ViewModeTabs mode={viewMode} onChange={setViewMode} />
+          </div>
         </div>
-        <ViewModeTabs mode={viewMode} onChange={setViewMode} />
-      </div>
+      </header>
+
+      <main className="container-fluid px-3 px-lg-4 py-4">
 
       {isRealtime && (
         <LiveStatsBar
@@ -363,60 +369,89 @@ export default function App() {
 
       {isAnalytics && (
         <>
-          <div className="card">
-            <h2>방문 분석 · {selectedPath || 'URL 선택'}</h2>
-            <AnalyticsPanel data={analytics} />
+          <div className="card border-0 shadow-sm mb-4">
+            <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
+              <h2 className="h6 mb-0 fw-semibold">방문 분석 · {selectedPath || 'URL 선택'}</h2>
+            </div>
+            <div className="card-body">
+              <AnalyticsPanel data={analytics} />
+            </div>
           </div>
-          <div className="card" style={{ marginTop: 20 }}>
-            <h2>퍼널 분석</h2>
-            <FunnelPanel
-              data={funnel}
-              steps={funnelSteps}
-              onStepsChange={setFunnelSteps}
-              onAnalyze={loadFunnel}
-            />
+          <div className="card border-0 shadow-sm mb-4">
+            <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
+              <h2 className="h6 mb-0 fw-semibold">퍼널 분석</h2>
+            </div>
+            <div className="card-body">
+              <FunnelPanel
+                data={funnel}
+                steps={funnelSteps}
+                onStepsChange={setFunnelSteps}
+                onAnalyze={loadFunnel}
+              />
+            </div>
           </div>
         </>
       )}
 
       {isPath && (
-        <div className="card">
-          <h2>Path Plot</h2>
-          <PathPlot data={pathPlot} />
+        <div className="card border-0 shadow-sm mb-4">
+          <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
+            <h2 className="h6 mb-0 fw-semibold">Path Plot</h2>
+          </div>
+          <div className="card-body">
+            <PathPlot data={pathPlot} />
+          </div>
         </div>
       )}
 
       {(isUx || isRealtime) && (
         <div className={`grid${isRealtime ? ' grid-live' : ''}`}>
-          <div className={`card${isRealtime ? ' card-heatmap' : ''}`}>
-            <h2>{isRealtime ? 'RealTime 히트맵' : 'UX 히트맵'}</h2>
-            <HeatmapViewer
-              clicks={heatmapClicks}
-              screenshot={screenshot}
-              liveMode={isRealtime}
-            />
+          <div className={`card border-0 shadow-sm mb-4 mb-lg-0${isRealtime ? ' card-heatmap' : ''}`}>
+            <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
+              <h2 className="h6 mb-0 fw-semibold">{isRealtime ? 'RealTime 히트맵' : 'UX 히트맵'}</h2>
+            </div>
+            <div className="card-body">
+              <HeatmapViewer
+                clicks={heatmapClicks}
+                screenshot={screenshot}
+                liveMode={isRealtime}
+              />
+            </div>
           </div>
 
           {isRealtime ? (
-            <div className="card card-feed">
-              <h2>방금 클릭됨</h2>
-              <ClickFeed items={feed} />
+            <div className="card border-0 shadow-sm card-feed">
+              <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
+                <h2 className="h6 mb-0 fw-semibold">방금 클릭됨</h2>
+              </div>
+              <div className="card-body pt-2">
+                <ClickFeed items={feed} />
+              </div>
             </div>
           ) : (
-            <div className="card">
-              <h2>스크롤 깊이</h2>
-              <ScrollDepthChart data={scrollDepth.data} total={scrollDepth.total} />
+            <div className="card border-0 shadow-sm mb-4 mb-lg-0">
+              <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
+                <h2 className="h6 mb-0 fw-semibold">스크롤 깊이</h2>
+              </div>
+              <div className="card-body">
+                <ScrollDepthChart data={scrollDepth.data} total={scrollDepth.total} />
+              </div>
             </div>
           )}
         </div>
       )}
 
       {isUx && (
-        <div className="card" style={{ marginTop: 20 }}>
-          <h2>클릭 요소 랭킹</h2>
-          <ElementClickRanking elements={elements} />
+        <div className="card border-0 shadow-sm mt-4">
+          <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
+            <h2 className="h6 mb-0 fw-semibold">클릭 요소 랭킹</h2>
+          </div>
+          <div className="card-body">
+            <ElementClickRanking elements={elements} />
+          </div>
         </div>
       )}
+      </main>
     </div>
   );
 }

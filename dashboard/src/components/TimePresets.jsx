@@ -16,12 +16,12 @@ export function presetToMinutes(preset) {
 
 export default function TimePresets({ value, onChange }) {
   return (
-    <div className="time-presets">
+    <div className="btn-group btn-group-sm flex-wrap" role="group" aria-label="시간 범위">
       {WINDOW_PRESETS.map((opt) => (
         <button
           key={opt.value}
           type="button"
-          className={value === opt.value ? 'active' : ''}
+          className={`btn${value === opt.value ? ' btn-primary' : ' btn-outline-secondary'}`}
           onClick={() => onChange(opt.value)}
         >
           {opt.label}
