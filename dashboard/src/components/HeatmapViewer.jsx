@@ -4,12 +4,15 @@ function renderHeatmap(ctx, clicks, width, height, liveMode) {
   ctx.clearRect(0, 0, width, height);
   if (!width || !height || !clicks.length) return;
 
-  const radius = liveMode
+  const heatRadius = liveMode
     ? Math.max(18, Math.min(44, width * 0.045))
-    : Math.max(14, Math.min(32, width * 0.038));
+    : Math.max(16, Math.min(32, width * 0.034));
 
-  const densityFactor = Math.sqrt(clicks.length / 40 + 1);
-  const centerAlpha = (liveMode ? 0.42 : 0.2) / densityFactor;
+  const densityFactor = Math.pow(clicks.length / (liveMode ? 40 : 120) + 1, liveMode ? 0.5 : 0.32);
+  const centerAlpha = Math.max(
+    liveMode ? 0.16 : 0.12,
+    (liveMode ? 0.45 : 0.34) / densityFactor
+  );
 
   for (const click of clicks) {
     const x = Number(click.x);
@@ -19,16 +22,16 @@ function renderHeatmap(ctx, clicks, width, height, liveMode) {
     const px = (x / 100) * width;
     const py = (y / 100) * height;
 
-    const grad = ctx.createRadialGradient(px, py, 0, px, py, radius);
-    grad.addColorStop(0, `rgba(255, 30, 0, ${centerAlpha})`);
-    grad.addColorStop(0.5, `rgba(255, 60, 0, ${centerAlpha * 0.35})`);
+    const grad = ctx.createRadialGradient(px, py, 0, px, py, heatRadius);
+    grad.addColorStop(0, `rgba(255, 35, 0, ${centerAlpha * 0.5})`);
+    grad.addColorStop(0.28, `rgba(255, 50, 0, ${centerAlpha})`);
+    grad.addColorStop(0.62, `rgba(255, 80, 0, ${centerAlpha * 0.42})`);
     grad.addColorStop(1, 'rgba(255, 0, 0, 0)');
     ctx.fillStyle = grad;
-    ctx.fillRect(px - radius, py - radius, radius * 2, radius * 2);
+    ctx.fillRect(px - heatRadius, py - heatRadius, heatRadius * 2, heatRadius * 2);
   }
 
-  const showDots = liveMode || clicks.length <= 100;
-  if (!showDots) return;
+  const dotRadius = liveMode ? 4 : clicks.length > 250 ? 2.5 : 3;
 
   for (const click of clicks) {
     const x = Number(click.x);
@@ -39,11 +42,11 @@ function renderHeatmap(ctx, clicks, width, height, liveMode) {
     const py = (y / 100) * height;
 
     ctx.beginPath();
-    ctx.arc(px, py, liveMode ? 4 : 3, 0, Math.PI * 2);
-    ctx.fillStyle = liveMode ? 'rgba(220, 20, 0, 0.9)' : 'rgba(220, 20, 0, 0.65)';
+    ctx.arc(px, py, dotRadius, 0, Math.PI * 2);
+    ctx.fillStyle = liveMode ? 'rgba(220, 20, 0, 0.9)' : 'rgba(210, 15, 0, 0.88)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = liveMode ? 1 : 1.25;
     ctx.stroke();
   }
 }
