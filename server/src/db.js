@@ -4,7 +4,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const dataDir = path.join(__dirname, '../data');
+export const dataDir = process.env.DATA_DIR || path.join(__dirname, '../data');
 export const screenshotsDir = path.join(dataDir, 'screenshots');
 
 fs.mkdirSync(screenshotsDir, { recursive: true });
