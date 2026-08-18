@@ -1,6 +1,143 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import TimePresets from './TimePresets.jsx';
 import { pathMetricLabel, pathMetricValue } from './AnalyticsPanel.jsx';
+
+// ─── URL → 읽기 좋은 라벨 변환 ───────────────────────────────
+function pathLabel(urlPath) {
+  if (!urlPath || urlPath === '/') return '홈 (/)';
+  // 쿼리스트링 제거, 슬래시 정리
+  const clean = urlPath.split('?')[0].replace(/\/$/, '');
+  const segments = clean.split('/').filter(Boolean);
+  if (!segments.length) return urlPath;
+  // 마지막 의미있는 세그먼트
+  const last = segments[segments.length - 1]
+    .replace(/\.[^.]+$/, '')           // 확장자 제거
+    .replace(/[-_]/g, ' ')             // 하이픈·언더바 → 공백
+    .replace(/\b\w/g, c => c.toUpperCase()); // 첫 글자 대문자
+  // 상위 경로 prefix (최대 1단계)
+  const prefix = segments.length > 1 ? segments[segments.length - 2] : '';
+  return prefix ? `${last}  ·  ${prefix}` : last;
+}
+
+// ─── 검색 가능한 페이지 선택 드롭다운 ────────────────────────
+function PathPicker({ paths, value, onChange, pathMetric, onPathMetricChange }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const wrapRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const current = paths.find(p => p.path === value);
+
+  const filtered = query.trim()
+    ? paths.filter(p =>
+        p.path.toLowerCase().includes(query.toLowerCase()) ||
+        pathLabel(p.path).toLowerCase().includes(query.toLowerCase())
+      )
+    : paths;
+
+  // 외부 클릭 시 닫기
+  useEffect(() => {
+    function onDown(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  function select(path) {
+    onChange(path);
+    setQuery('');
+    setOpen(false);
+  }
+
+  function handleInputKey(e) {
+    if (e.key === 'Escape') { setOpen(false); setQuery(''); }
+    if (e.key === 'Enter' && filtered.length > 0) select(filtered[0].path);
+  }
+
+  return (
+    <div className="path-picker-wrap" ref={wrapRef}>
+      {/* 트리거 버튼 */}
+      <div className="input-group input-group-sm">
+        <button
+          type="button"
+          className="path-picker-trigger form-select text-start"
+          onClick={() => { setOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 50); }}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+        >
+          {current ? (
+            <span className="path-trigger-inner">
+              <span className="path-trigger-label">{pathLabel(current.path)}</span>
+              <span className="path-trigger-url">{current.path}</span>
+              <span className="path-trigger-badge">
+                {pathMetricValue(current, pathMetric)} {pathMetricLabel(pathMetric)}
+              </span>
+            </span>
+          ) : (
+            <span className="text-muted">수집된 데이터 없음</span>
+          )}
+        </button>
+
+        {/* 정렬 select는 그대로 유지 */}
+        <label className="input-group-text text-muted" htmlFor="path-metric">정렬</label>
+        <select
+          id="path-metric"
+          className="form-select filter-metric-select"
+          value={pathMetric}
+          onChange={(e) => onPathMetricChange(e.target.value)}
+        >
+          {PATH_METRICS.map((m) => (
+            <option key={m.value} value={m.value}>{m.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* 드롭다운 */}
+      {open && (
+        <div className="path-picker-dropdown" role="listbox">
+          <div className="path-picker-search">
+            <i className="bi bi-search" aria-hidden="true" />
+            <input
+              ref={inputRef}
+              type="text"
+              className="path-picker-input"
+              placeholder="URL 또는 페이지명 검색…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={handleInputKey}
+            />
+            {query && (
+              <button className="path-picker-clear" onClick={() => setQuery('')} type="button">
+                <i className="bi bi-x" />
+              </button>
+            )}
+          </div>
+          <ul className="path-picker-list">
+            {filtered.length === 0 && (
+              <li className="path-picker-empty">검색 결과 없음</li>
+            )}
+            {filtered.map(p => (
+              <li
+                key={p.path}
+                role="option"
+                aria-selected={p.path === value}
+                className={`path-picker-item${p.path === value ? ' active' : ''}`}
+                onClick={() => select(p.path)}
+              >
+                <span className="path-item-label">{pathLabel(p.path)}</span>
+                <span className="path-item-url">{p.path}</span>
+                <span className="path-item-badge">
+                  {pathMetricValue(p, pathMetric)} {pathMetricLabel(pathMetric)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── 날짜 프리셋 ──────────────────────────────────────────────
 const DATE_PRESETS = [
@@ -221,36 +358,13 @@ export default function FilterPanel({
                 </div>
               ) : (
                 <FilterField label="페이지" className="filter-field-grow">
-                  <div className="input-group input-group-sm">
-                    <select
-                      id="url-picker"
-                      className="form-select"
-                      value={selectedPath}
-                      onChange={(e) => onPathChange(e.target.value)}
-                    >
-                      {paths.length === 0 && <option value="">수집된 데이터 없음</option>}
-                      {paths.map((p) => (
-                        <option key={p.path} value={p.path}>
-                          {p.path} ({pathMetricValue(p, pathMetric)} {pathMetricLabel(pathMetric)})
-                        </option>
-                      ))}
-                    </select>
-                    <label className="input-group-text text-muted" htmlFor="path-metric">
-                      정렬
-                    </label>
-                    <select
-                      id="path-metric"
-                      className="form-select filter-metric-select"
-                      value={pathMetric}
-                      onChange={(e) => onPathMetricChange(e.target.value)}
-                    >
-                      {PATH_METRICS.map((m) => (
-                        <option key={m.value} value={m.value}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <PathPicker
+                    paths={paths}
+                    value={selectedPath}
+                    onChange={onPathChange}
+                    pathMetric={pathMetric}
+                    onPathMetricChange={onPathMetricChange}
+                  />
                 </FilterField>
               )}
             </div>
