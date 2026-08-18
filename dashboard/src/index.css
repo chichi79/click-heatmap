@@ -825,12 +825,42 @@ body {
   cursor: not-allowed;
 }
 
+/* ── 날짜 프리셋 래퍼 ── */
+.filter-date-preset-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.filter-date-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-radius: 0.5rem;
+  background: var(--filter-chip-bg, rgba(0, 0, 0, 0.04));
+  padding: 0.2rem;
+}
+
+/* 직접 입력 칩: 구분감을 위해 왼쪽에 살짝 간격 */
+.filter-date-chips .filter-chip:last-child {
+  margin-left: 0.25rem;
+  border-left: 1px solid var(--dashboard-border);
+  border-radius: 0.35rem;
+  padding-left: 0.6rem;
+}
+
 .filter-date-range {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   width: 100%;
   min-width: 0;
+}
+
+/* 직접 입력 시 datetime 인풋 영역 */
+.filter-date-range--custom {
+  padding-top: 0.1rem;
 }
 
 .filter-date-range .form-control {

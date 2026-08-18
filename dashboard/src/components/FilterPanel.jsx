@@ -1,5 +1,136 @@
+import { useEffect, useState } from 'react';
 import TimePresets from './TimePresets.jsx';
 import { pathMetricLabel, pathMetricValue } from './AnalyticsPanel.jsx';
+
+// ─── 날짜 프리셋 ──────────────────────────────────────────────
+const DATE_PRESETS = [
+  { key: 'today',     label: '오늘' },
+  { key: 'yesterday', label: '어제' },
+  { key: 'd2',        label: '그저께' },
+  { key: 'week',      label: '이번 주' },
+  { key: 'month',     label: '이번 달' },
+  { key: 'all',       label: '전체' },
+  { key: 'custom',    label: '직접 입력' },
+];
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function toLocalDT(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function getPresetRange(key) {
+  const now  = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  switch (key) {
+    case 'today':
+      return { from: toLocalDT(today), to: '' };
+
+    case 'yesterday': {
+      const d = new Date(today); d.setDate(d.getDate() - 1);
+      const end = new Date(d);   end.setHours(23, 59, 0, 0);
+      return { from: toLocalDT(d), to: toLocalDT(end) };
+    }
+    case 'd2': {
+      const d = new Date(today); d.setDate(d.getDate() - 2);
+      const end = new Date(d);   end.setHours(23, 59, 0, 0);
+      return { from: toLocalDT(d), to: toLocalDT(end) };
+    }
+    case 'week': {
+      // 월요일 기준
+      const dow = today.getDay();
+      const diff = dow === 0 ? 6 : dow - 1;
+      const d = new Date(today); d.setDate(today.getDate() - diff);
+      return { from: toLocalDT(d), to: '' };
+    }
+    case 'month': {
+      const d = new Date(today.getFullYear(), today.getMonth(), 1);
+      return { from: toLocalDT(d), to: '' };
+    }
+    case 'all':
+      return { from: '', to: '' };
+    default:
+      return null;
+  }
+}
+
+function detectPreset(from, to) {
+  if (!from && !to) return 'all';
+  for (const p of DATE_PRESETS) {
+    if (p.key === 'custom') continue;
+    const range = getPresetRange(p.key);
+    if (!range) continue;
+    if (range.from === from && range.to === to) return p.key;
+  }
+  return 'custom';
+}
+
+// 날짜 프리셋 칩 + 직접 입력 폼
+function DateRangeField({ from, to, onFromChange, onToChange }) {
+  const [preset, setPreset] = useState(() => detectPreset(from, to));
+
+  // from/to 외부 변경 시 재감지 (탭 전환 등)
+  useEffect(() => {
+    setPreset(detectPreset(from, to));
+  }, [from, to]);
+
+  function handlePreset(key) {
+    setPreset(key);
+    if (key === 'custom') return; // 입력창만 열어줌
+    const range = getPresetRange(key);
+    if (range) {
+      onFromChange(range.from);
+      onToChange(range.to);
+    }
+  }
+
+  function handleFromChange(v) {
+    onFromChange(v);
+    setPreset('custom');
+  }
+  function handleToChange(v) {
+    onToChange(v);
+    setPreset('custom');
+  }
+
+  return (
+    <div className="filter-date-preset-wrap">
+      <div className="filter-chips filter-date-chips" role="group" aria-label="기간 프리셋">
+        {DATE_PRESETS.map((p) => (
+          <button
+            key={p.key}
+            type="button"
+            className={`filter-chip${preset === p.key ? ' active' : ''}`}
+            onClick={() => handlePreset(p.key)}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {preset === 'custom' && (
+        <div className="filter-date-range filter-date-range--custom">
+          <input
+            type="datetime-local"
+            className="form-control form-control-sm"
+            value={from}
+            onChange={(e) => handleFromChange(e.target.value)}
+            aria-label="시작일"
+          />
+          <span className="filter-date-sep">~</span>
+          <input
+            type="datetime-local"
+            className="form-control form-control-sm"
+            value={to}
+            onChange={(e) => handleToChange(e.target.value)}
+            aria-label="종료일"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 const DEVICE_OPTIONS = [
   { value: 'all', label: '전체' },
@@ -182,25 +313,12 @@ export default function FilterPanel({
                 </>
               ) : (
                 <FilterField label="기간" className="filter-field-grow">
-                  <div className="filter-date-range">
-                    <input
-                      id="from"
-                      type="datetime-local"
-                      className="form-control form-control-sm"
-                      value={from}
-                      onChange={(e) => onFromChange(e.target.value)}
-                      aria-label="시작일"
-                    />
-                    <span className="filter-date-sep">~</span>
-                    <input
-                      id="to"
-                      type="datetime-local"
-                      className="form-control form-control-sm"
-                      value={to}
-                      onChange={(e) => onToChange(e.target.value)}
-                      aria-label="종료일"
-                    />
-                  </div>
+                  <DateRangeField
+                    from={from}
+                    to={to}
+                    onFromChange={onFromChange}
+                    onToChange={onToChange}
+                  />
                 </FilterField>
               )}
             </div>
@@ -208,25 +326,12 @@ export default function FilterPanel({
             {isRealtime && realtimeCustomRange && (
               <div className="filter-toolbar-row filter-toolbar-row-extra">
                 <FilterField label="시작 · 종료" className="filter-field-grow">
-                  <div className="filter-date-range">
-                    <input
-                      id="rt-from"
-                      type="datetime-local"
-                      className="form-control form-control-sm"
-                      value={from}
-                      onChange={(e) => onFromChange(e.target.value)}
-                      aria-label="시작일"
-                    />
-                    <span className="filter-date-sep">~</span>
-                    <input
-                      id="rt-to"
-                      type="datetime-local"
-                      className="form-control form-control-sm"
-                      value={to}
-                      onChange={(e) => onToChange(e.target.value)}
-                      aria-label="종료일"
-                    />
-                  </div>
+                  <DateRangeField
+                    from={from}
+                    to={to}
+                    onFromChange={onFromChange}
+                    onToChange={onToChange}
+                  />
                 </FilterField>
               </div>
             )}
