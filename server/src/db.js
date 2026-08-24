@@ -100,6 +100,16 @@ await db.execute(`CREATE TABLE IF NOT EXISTS assignments (
   PRIMARY KEY (visitor_id, experiment_id)
 )`);
 
+// ── 마이그레이션: 기존 DB에 없는 컬럼 추가 ──────────────────────
+// SQLite는 IF NOT EXISTS 지원 안 해서 try/catch로 처리
+for (const col of [
+  `ALTER TABLE events ADD COLUMN page_group TEXT`,
+  `ALTER TABLE events ADD COLUMN zone       TEXT`,
+  `ALTER TABLE events ADD COLUMN article_y  REAL`,
+]) {
+  try { await db.execute(col); } catch { /* 이미 있으면 무시 */ }
+}
+
 // 인덱스
 const indexes = [
   `CREATE INDEX IF NOT EXISTS idx_path        ON events(path)`,
@@ -110,6 +120,8 @@ const indexes = [
   `CREATE INDEX IF NOT EXISTS idx_visitor     ON events(visitor_id)`,
   `CREATE INDEX IF NOT EXISTS idx_experiment  ON events(experiment_id)`,
   `CREATE INDEX IF NOT EXISTS idx_variant     ON events(variant)`,
+  `CREATE INDEX IF NOT EXISTS idx_page_group ON events(page_group)`,
+  `CREATE INDEX IF NOT EXISTS idx_zone       ON events(zone)`,
   `CREATE INDEX IF NOT EXISTS idx_sessions_visitor ON sessions(visitor_id)`,
   `CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at)`,
   `CREATE INDEX IF NOT EXISTS idx_experiments_path   ON experiments(path)`,

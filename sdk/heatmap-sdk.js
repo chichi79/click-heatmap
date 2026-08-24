@@ -1,19 +1,72 @@
-// heatmap-sdk.js v1.0.5
+// heatmap-sdk.js v1.1.0
 // 삽입: <script src="https://your-internal.server/heatmap-sdk.js" defer></script>
 (function () {
   // ---- 외부 설정 읽기 ----
-  // <script>window.__heatmapConfig = { urlPatterns: [[/regex/, '/replacement']] };</script>
-  // 위 설정을 SDK 로드 전에 삽입하면 URL 정규화 적용됨
+  // SDK 로드 전에 설정:
+  // window.__heatmapConfig = {
+  //   pageGroups: [{ pattern: /^\/view\/\w+$/, group: 'news_article' }],
+  //   zones: { title: '.article-title', body: '#article-body', comment: '#comment' },
+  //   articleSelector: '#article-body',   // articleY 기준 엘리먼트
+  // };
   const _cfg = window.__heatmapConfig || {};
+  const _pageGroups  = Array.isArray(_cfg.pageGroups)  ? _cfg.pageGroups  : [];
+  // 하위호환: urlPatterns → pageGroups 로도 동작
   const _urlPatterns = Array.isArray(_cfg.urlPatterns) ? _cfg.urlPatterns : [];
+  const _zones       = _cfg.zones && typeof _cfg.zones === 'object' ? _cfg.zones : {};
+  const _articleSel  = typeof _cfg.articleSelector === 'string' ? _cfg.articleSelector : null;
 
   function normalizePath(pathname) {
+    // urlPatterns (구형 — path 치환)
     for (const [pattern, replacement] of _urlPatterns) {
       if (pattern instanceof RegExp ? pattern.test(pathname) : pathname === pattern) {
         return typeof replacement === 'function' ? replacement(pathname) : replacement;
       }
     }
     return pathname;
+  }
+
+  function getPageGroup(pathname) {
+    for (const { pattern, group } of _pageGroups) {
+      if (pattern instanceof RegExp ? pattern.test(pathname) : pathname === pattern) {
+        return group;
+      }
+    }
+    return null;
+  }
+
+  function detectZone(target) {
+    if (!target || !Object.keys(_zones).length) return null;
+    let el = target;
+    while (el && el !== document.body) {
+      for (const [zoneName, selector] of Object.entries(_zones)) {
+        try {
+          if (el.matches(selector)) return zoneName;
+        } catch (e) { /* noop */ }
+      }
+      // data-heatmap-zone 속성 직접 지정 지원
+      const attr = el.getAttribute && el.getAttribute('data-heatmap-zone');
+      if (attr) return attr;
+      el = el.parentElement;
+    }
+    // data-heatmap-zone 없으면 null
+    return target.closest ? (target.closest('[data-heatmap-zone]')?.getAttribute('data-heatmap-zone') ?? null) : null;
+  }
+
+  function getArticleY(clientY) {
+    if (!_articleSel) return null;
+    try {
+      const articleEl = document.querySelector(_articleSel);
+      if (!articleEl) return null;
+      const rect = articleEl.getBoundingClientRect();
+      const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      const absTop = rect.top + scrollY;
+      const absClickY = clientY + scrollY;
+      const relY = absClickY - absTop;
+      if (relY < 0 || articleEl.offsetHeight <= 0) return null;
+      return +((relY / articleEl.offsetHeight) * 100).toFixed(2);
+    } catch (e) {
+      return null;
+    }
   }
 
   const VISITOR_KEY = 'hm_visitor_id';
@@ -270,6 +323,7 @@
     const ab = abAssignments[0] ?? null;
     return {
       path: normalizePath(location.pathname),
+      pageGroup: getPageGroup(location.pathname),
       session: SESSION,
       visitorId: VISITOR_ID,
       ts: Date.now(),
@@ -277,6 +331,8 @@
       selector: null,
       tagName: null,
       elementText: null,
+      zone: null,
+      articleY: null,
       ...(ab ? { experimentId: ab.experimentId, variant: ab.variant } : {}),
       ...extra,
     };
@@ -357,6 +413,8 @@
           type: 'click',
           x: coords.x,
           y: coords.y,
+          zone: detectZone(e.target),
+          articleY: getArticleY(e.clientY),
           ...meta,
         })
       );

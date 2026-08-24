@@ -24,6 +24,13 @@ function variantFilter(variant, clauses, params) {
   }
 }
 
+function pageGroupFilter(pageGroup, clauses, params) {
+  if (pageGroup && pageGroup !== 'all') {
+    clauses.push('page_group = :pageGroup');
+    params.pageGroup = pageGroup;
+  }
+}
+
 router.get('/paths', async (req, res) => {
   try {
     const { from, to, deviceType = 'all' } = req.query;
@@ -33,6 +40,7 @@ router.get('/paths', async (req, res) => {
 
     const rows = await all(
       `SELECT path,
+              MAX(page_group) as pageGroup,
               SUM(CASE WHEN type = 'click'    THEN 1 ELSE 0 END) as clicks,
               SUM(CASE WHEN type = 'scroll'   THEN 1 ELSE 0 END) as scrolls,
               SUM(CASE WHEN type = 'pageview' THEN 1 ELSE 0 END) as pageviews,
@@ -43,6 +51,55 @@ router.get('/paths', async (req, res) => {
       params
     );
     res.json(rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'server error' }); }
+});
+
+// pageGroup 목록
+router.get('/page-groups', async (req, res) => {
+  try {
+    const rows = await all(
+      `SELECT page_group as pageGroup,
+              COUNT(DISTINCT path) as pathCount,
+              SUM(CASE WHEN type='click' THEN 1 ELSE 0 END) as clicks,
+              SUM(CASE WHEN type='pageview' THEN 1 ELSE 0 END) as pageviews,
+              COUNT(DISTINCT visitor_id) as uv
+       FROM events WHERE page_group IS NOT NULL
+       GROUP BY page_group ORDER BY clicks DESC`
+    );
+    res.json(rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'server error' }); }
+});
+
+// 존 랭킹 (pageGroup 또는 path 기준)
+router.get('/zone-clicks', async (req, res) => {
+  try {
+    const { path, pageGroup, from, to, deviceType = 'all' } = req.query;
+    if (!path && !pageGroup) return res.status(400).json({ error: 'path or pageGroup is required' });
+
+    const { clauses, params } = timeFilter(from, to);
+    deviceFilter(deviceType, clauses, params);
+    clauses.push("type = 'click'", 'zone IS NOT NULL');
+
+    if (pageGroup) {
+      clauses.push('page_group = :pageGroup');
+      params.pageGroup = pageGroup;
+    } else {
+      clauses.push('path = :path');
+      params.path = path;
+    }
+
+    const rows = await all(
+      `SELECT zone,
+              COUNT(*) as clicks,
+              COUNT(DISTINCT session) as sessions,
+              COUNT(DISTINCT visitor_id) as uv
+       FROM events WHERE ${clauses.join(' AND ')}
+       GROUP BY zone ORDER BY clicks DESC`,
+      params
+    );
+
+    const total = rows.reduce((s, r) => s + Number(r.clicks), 0);
+    res.json(rows.map(r => ({ ...r, pct: total ? +((r.clicks / total) * 100).toFixed(1) : 0 })));
   } catch (err) { console.error(err); res.status(500).json({ error: 'server error' }); }
 });
 
