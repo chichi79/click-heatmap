@@ -1,6 +1,21 @@
-// heatmap-sdk.js v1.0.4
+// heatmap-sdk.js v1.0.5
 // 삽입: <script src="https://your-internal.server/heatmap-sdk.js" defer></script>
 (function () {
+  // ---- 외부 설정 읽기 ----
+  // <script>window.__heatmapConfig = { urlPatterns: [[/regex/, '/replacement']] };</script>
+  // 위 설정을 SDK 로드 전에 삽입하면 URL 정규화 적용됨
+  const _cfg = window.__heatmapConfig || {};
+  const _urlPatterns = Array.isArray(_cfg.urlPatterns) ? _cfg.urlPatterns : [];
+
+  function normalizePath(pathname) {
+    for (const [pattern, replacement] of _urlPatterns) {
+      if (pattern instanceof RegExp ? pattern.test(pathname) : pathname === pattern) {
+        return typeof replacement === 'function' ? replacement(pathname) : replacement;
+      }
+    }
+    return pathname;
+  }
+
   const VISITOR_KEY = 'hm_visitor_id';
   const VISITOR_TTL = 30 * 24 * 60 * 60 * 1000;
   const SESSION_KEY = 'hm_session_id';
@@ -254,7 +269,7 @@
   function baseEvent(extra) {
     const ab = abAssignments[0] ?? null;
     return {
-      path: location.pathname,
+      path: normalizePath(location.pathname),
       session: SESSION,
       visitorId: VISITOR_ID,
       ts: Date.now(),
@@ -277,7 +292,7 @@
       const url =
         SERVER_ORIGIN +
         '/api/ab/config?path=' +
-        encodeURIComponent(location.pathname) +
+        encodeURIComponent(normalizePath(location.pathname)) +
         '&visitorId=' +
         encodeURIComponent(VISITOR_ID);
       const res = await fetch(url);
@@ -574,7 +589,7 @@
   }
 
   function screenshotStorageKey(deviceType) {
-    return `hm-ss-v5-${location.pathname}-${deviceType}`;
+    return `hm-ss-v5-${normalizePath(location.pathname)}-${deviceType}`;
   }
 
   function hasScreenshotCaptured(deviceType) {
@@ -614,7 +629,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          path: location.pathname,
+          path: normalizePath(location.pathname),
           viewportWidth: ctx.viewportWidth,
           viewportHeight: ctx.viewportHeight,
           pageWidth,
