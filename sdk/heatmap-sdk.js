@@ -1,4 +1,4 @@
-// heatmap-sdk.js v1.1.0
+// heatmap-sdk.js v1.1.1
 // 삽입: <script src="https://your-internal.server/heatmap-sdk.js" defer></script>
 (function () {
   // ---- 외부 설정 읽기 ----
@@ -14,6 +14,14 @@
   const _urlPatterns = Array.isArray(_cfg.urlPatterns) ? _cfg.urlPatterns : [];
   const _zones       = _cfg.zones && typeof _cfg.zones === 'object' ? _cfg.zones : {};
   const _articleSel  = typeof _cfg.articleSelector === 'string' ? _cfg.articleSelector : null;
+
+  // ---- 샘플링 ----
+  // sampleRate: 0~1 (기본 1.0 = 전수 수집)
+  // 예: 0.1 = 방문자의 10%만 수집
+  const _sampleRate = typeof _cfg.sampleRate === 'number'
+    ? Math.min(1, Math.max(0, _cfg.sampleRate))
+    : 1.0;
+  if (Math.random() > _sampleRate) return; // 샘플 밖이면 SDK 즉시 종료
 
   function normalizePath(pathname) {
     // urlPatterns (구형 — path 치환)
