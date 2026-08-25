@@ -220,14 +220,13 @@
     return { pageWidth: pageWidth || window.innerWidth, pageHeight: pageHeight || window.innerHeight };
   }
 
-  /** 클릭 위치를 페이지 전체 기준 %로 변환 (스크롤 포함) */
+  /** 클릭 위치: 절대 픽셀 좌표 (scrollX/Y + clientX/Y) */
   function clickPageCoords(e) {
-    const { pageWidth, pageHeight } = pageMetrics();
     const scrollX = window.scrollX || document.documentElement.scrollLeft || 0;
     const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
     return {
-      x: +(((scrollX + e.clientX) / pageWidth) * 100).toFixed(2),
-      y: +(((scrollY + e.clientY) / pageHeight) * 100).toFixed(2),
+      xAbs: Math.round(scrollX + e.clientX),
+      yAbs: Math.round(scrollY + e.clientY),
     };
   }
 
@@ -433,8 +432,8 @@
       track(
         baseEvent({
           type: 'click',
-          x: coords.x,
-          y: coords.y,
+          x: coords.xAbs,   // 절대 픽셀 좌표 (렌더링 시 스크린샷 기준 정규화)
+          y: coords.yAbs,
           zone: detectZone(e.target),
           articleY: getArticleY(e.clientY),
           ...meta,
@@ -705,6 +704,10 @@
         return false;
       }
 
+      // 실제 캡처된 이미지 크기 (scale 역산) → 좌표 정규화 기준으로 사용
+      const capturedWidth  = Math.round(canvas.width  / scale);
+      const capturedHeight = Math.round(canvas.height / scale);
+
       const res = await fetch(SERVER_ORIGIN + '/api/screenshot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -712,8 +715,8 @@
           path: normalizePath(location.pathname),
           viewportWidth: ctx.viewportWidth,
           viewportHeight: ctx.viewportHeight,
-          pageWidth,
-          pageHeight,
+          pageWidth:  capturedWidth,
+          pageHeight: capturedHeight,
           deviceType: ctx.deviceType,
           image,
         }),

@@ -27,9 +27,13 @@ function heatColor(t) {
   return stops[stops.length - 1][1];
 }
 
-function renderHeatmap(ctx, clicks, width, height, liveMode, screenshotPageHeight) {
+function renderHeatmap(ctx, clicks, width, height, liveMode, screenshot) {
   ctx.clearRect(0, 0, width, height);
   if (!width || !height || !clicks.length) return;
+
+  // 스크린샷 실제 캡처 크기 (절대 좌표 정규화 기준)
+  const ssW = screenshot?.pageWidth  || null;
+  const ssH = screenshot?.pageHeight || null;
 
   // 밀도 연산은 절반 해상도로 수행 (성능): 20k 클릭도 ~60ms 이내
   const SCALE = Math.min(1.0, 500 / Math.max(width, height));
@@ -47,19 +51,25 @@ function renderHeatmap(ctx, clicks, width, height, liveMode, screenshotPageHeigh
   const grid = new Float32Array(gw * gh);
 
   for (const click of clicks) {
-    const xPct = Number(click.x);
-    const yPct = Number(click.y);
-    if (!Number.isFinite(xPct) || !Number.isFinite(yPct)) continue;
+    const rawX = Number(click.x);
+    const rawY = Number(click.y);
+    if (!Number.isFinite(rawX) || !Number.isFinite(rawY)) continue;
 
-    // 클릭 시점 pageHeight와 스크린샷 pageHeight가 다를 경우 Y 보정
-    let adjustedYPct = yPct;
-    if (screenshotPageHeight && click.pageHeight && click.pageHeight !== screenshotPageHeight) {
-      const absY = (yPct / 100) * click.pageHeight;
-      adjustedYPct = (absY / screenshotPageHeight) * 100;
+    // 절대 좌표(px) → 스크린샷 기준 % 변환
+    // rawX/Y가 100 이하이면 구형 % 데이터, 초과하면 절대 픽셀
+    let xPct, yPct;
+    if (rawX > 100 || rawY > 100) {
+      // 신형: 절대 픽셀 좌표
+      xPct = ssW ? (rawX / ssW) * 100 : (rawX / width)  * 100;
+      yPct = ssH ? (rawY / ssH) * 100 : (rawY / height) * 100;
+    } else {
+      // 구형: 퍼센트 그대로 사용
+      xPct = rawX;
+      yPct = rawY;
     }
 
-    const cx = Math.round((xPct / 100) * gw);
-    const cy = Math.round((Math.min(adjustedYPct, 100) / 100) * gh);
+    const cx = Math.round((Math.min(xPct, 100) / 100) * gw);
+    const cy = Math.round((Math.min(yPct, 100) / 100) * gh);
     const x0 = Math.max(0, cx - r);
     const x1 = Math.min(gw - 1, cx + r);
     const y0 = Math.max(0, cy - r);
@@ -111,18 +121,21 @@ function renderHeatmap(ctx, clicks, width, height, liveMode, screenshotPageHeigh
 
   for (let i = 0; i < maxDots; i++) {
     const click = clicks[i];
-    const xPct = Number(click.x);
-    const yPct = Number(click.y);
-    if (!Number.isFinite(xPct) || !Number.isFinite(yPct)) continue;
+    const rawX = Number(click.x);
+    const rawY = Number(click.y);
+    if (!Number.isFinite(rawX) || !Number.isFinite(rawY)) continue;
 
-    let adjustedYPct = yPct;
-    if (screenshotPageHeight && click.pageHeight && click.pageHeight !== screenshotPageHeight) {
-      const absY = (yPct / 100) * click.pageHeight;
-      adjustedYPct = (absY / screenshotPageHeight) * 100;
+    let xPct, yPct;
+    if (rawX > 100 || rawY > 100) {
+      xPct = ssW ? (rawX / ssW) * 100 : (rawX / width)  * 100;
+      yPct = ssH ? (rawY / ssH) * 100 : (rawY / height) * 100;
+    } else {
+      xPct = rawX;
+      yPct = rawY;
     }
 
-    const px = (xPct / 100) * width;
-    const py = (Math.min(adjustedYPct, 100) / 100) * height;
+    const px = (Math.min(xPct, 100) / 100) * width;
+    const py = (Math.min(yPct, 100) / 100) * height;
 
     ctx.beginPath();
     ctx.arc(px, py, dotRadius, 0, Math.PI * 2);
@@ -180,7 +193,7 @@ export default function HeatmapViewer({ clicks, screenshot, liveMode = false }) 
 
       const ctx = canvas.getContext('2d');
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      renderHeatmap(ctx, clicks, w, h, liveMode, screenshot?.pageHeight);
+      renderHeatmap(ctx, clicks, w, h, liveMode, screenshot);
     };
 
     draw();
