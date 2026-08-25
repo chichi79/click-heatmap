@@ -63,7 +63,7 @@ const MENU_Y = 128;   // 메뉴바 시작 Y (픽셀 분석값)
 const MENU_H = 44;    // 메뉴바 높이
 // 표시할 크롭 영역: 메뉴바 주변만 (로고~메뉴바)
 const CROP_Y = 30;    // 위쪽 여백 포함
-const CROP_H = 180;   // 표시 높이 (메뉴바 아래까지)
+const CROP_H = 340;   // 표시 높이 (메뉴바 + 하단 콘텐츠 일부 노출)
 
 const MENUS = [
   { label: '홈',         x: 8,   w: 40  },
@@ -83,18 +83,21 @@ const MENUS = [
 
 /* ── 가우시안 히트맵 그리기 ──────────────────────────────────── */
 function drawHeatLayer(ctx, cw, ch, offsetY) {
-  const my = MENU_Y - offsetY;
-  const mh = MENU_H;
+  // 히트맵은 메뉴바를 중심으로 위아래로 퍼지도록 확장
+  const spreadPad = 28;                     // 메뉴바 위아래 번짐 여백
+  const my  = MENU_Y - offsetY - spreadPad; // 그리드 시작 y (화면 좌표)
+  const mh  = MENU_H + spreadPad * 2;       // 그리드 높이
   const grid = new Float32Array(cw * mh);
 
   for (const m of MENUS) {
     const clicks = getClicks(m.label);
     if (!clicks) continue;
     const t  = logT(clicks);
-    const r  = Math.round(16 + t * 32);
+    // 반경: 더 넓게 (로그 기반, 최소 24px)
+    const r  = Math.round(24 + t * 44);
     const cx = Math.round(m.x + m.w / 2);
-    const cy = Math.round(mh / 2);
-    const s2 = 2 * (r / 2.5) * (r / 2.5);
+    const cy = Math.round(mh / 2);          // 그리드 중앙 = 메뉴바 중앙
+    const s2 = 2 * (r / 2.2) * (r / 2.2);
     for (let py = Math.max(0, cy-r); py <= Math.min(mh-1, cy+r); py++) {
       for (let px = Math.max(0, cx-r); px <= Math.min(cw-1, cx+r); px++) {
         const d2 = (px-cx)**2 + (py-cy)**2;
@@ -110,23 +113,25 @@ function drawHeatLayer(ctx, cw, ch, offsetY) {
 
   const imgData = ctx.createImageData(cw, mh);
   const data = imgData.data;
-  const THRESH = 0.015; // 낮은 임계값 → 3~5천 클릭도 표시
+  const THRESH = 0.008; // 매우 낮은 임계값 → 3천대도 확산 표시
 
   const alphaStops = [
-    [0.00, [80,  160, 255, 40 ]],
-    [0.30, [0,   210, 255, 110]],
-    [0.55, [0,   210, 60,  170]],
-    [0.72, [255, 210, 0,   210]],
-    [0.87, [255, 100, 0,   235]],
-    [1.00, [255, 20,  0,   255]],
+    [0.00, [100, 180, 255, 0  ]],
+    [0.08, [80,  160, 255, 55 ]],
+    [0.30, [0,   210, 255, 120]],
+    [0.55, [0,   200, 60,  175]],
+    [0.72, [255, 210, 0,   215]],
+    [0.87, [255, 90,  0,   240]],
+    [1.00, [255, 10,  0,   255]],
   ];
 
   for (let iy = 0; iy < mh; iy++) {
     for (let ix = 0; ix < cw; ix++) {
       const raw = grid[iy*cw+ix] / maxVal;
       if (raw < THRESH) continue;
-      const t = Math.pow((raw - THRESH) / (1 - THRESH), 0.6); // 감마 보정 → 저값 강조
-      let cr=255,cg=20,cb=0,ca=255;
+      // 감마 0.55 → 저밀도 영역 더 잘 보임
+      const t = Math.pow((raw - THRESH) / (1 - THRESH), 0.55);
+      let cr=255,cg=10,cb=0,ca=255;
       for (let s = 0; s < alphaStops.length-1; s++) {
         const [t0,c0]= alphaStops[s], [t1,c1]= alphaStops[s+1];
         if (t <= t1) {
@@ -142,7 +147,11 @@ function drawHeatLayer(ctx, cw, ch, offsetY) {
       data[idx]=cr; data[idx+1]=cg; data[idx+2]=cb; data[idx+3]=ca;
     }
   }
-  ctx.putImageData(imgData, 0, my);
+  // my가 음수일 수 있으니 클램프
+  const destY = Math.max(0, my);
+  const srcOff = my < 0 ? (-my) * cw * 4 : 0;
+  const drawH  = my < 0 ? mh + my : mh;
+  if (drawH > 0) ctx.putImageData(imgData, 0, destY, 0, my < 0 ? -my : 0, cw, drawH);
 }
 
 function drawMenuLabels(ctx, offsetY) {
@@ -220,15 +229,22 @@ function HeatmapCanvas({ bgImage }) {
   }
 
   return (
-    <div className="position-relative">
+    <div style={{ position:'relative', borderRadius:8, overflow:'hidden' }}>
       <canvas
         ref={canvasRef}
         width={cw}
         height={ch}
-        style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 6, cursor: 'crosshair' }}
+        style={{ width: '100%', height: 'auto', display: 'block', cursor: 'crosshair' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
       />
+      {/* 하단 페이드아웃 */}
+      <div style={{
+        position:'absolute', left:0, right:0, bottom:0,
+        height:'45%',
+        background:'linear-gradient(to bottom, transparent 0%, var(--bs-body-bg, #fff) 100%)',
+        pointerEvents:'none',
+      }}/>
       {tooltip && (
         <div style={{
           position: 'fixed', left: tooltip.x+14, top: tooltip.y-12,
