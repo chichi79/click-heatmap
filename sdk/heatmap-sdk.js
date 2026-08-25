@@ -204,8 +204,19 @@
   function pageMetrics() {
     const doc = document.documentElement;
     const body = document.body;
-    const pageWidth = Math.max(doc.scrollWidth, body ? body.scrollWidth : 0, window.innerWidth);
-    const pageHeight = Math.max(doc.scrollHeight, body ? body.scrollHeight : 0, window.innerHeight);
+    // scrollHeight가 비정상적으로 클 경우(무한스크롤, 숨겨진 컨테이너 등) clientHeight 기준으로 제한
+    const rawH = Math.max(
+      doc.scrollHeight, body ? body.scrollHeight : 0,
+      doc.clientHeight, window.innerHeight
+    );
+    const rawW = Math.max(
+      doc.scrollWidth, body ? body.scrollWidth : 0,
+      doc.clientWidth, window.innerWidth
+    );
+    // 비정상값 방어: 뷰포트의 200배 초과 시 clientHeight 사용
+    const maxSafeH = window.innerHeight * 200;
+    const pageHeight = rawH > maxSafeH ? doc.clientHeight || window.innerHeight : rawH;
+    const pageWidth  = rawW > window.innerWidth * 10 ? doc.clientWidth || window.innerWidth : rawW;
     return { pageWidth: pageWidth || window.innerWidth, pageHeight: pageHeight || window.innerHeight };
   }
 
