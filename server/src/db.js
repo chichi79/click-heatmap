@@ -103,9 +103,11 @@ await db.execute(`CREATE TABLE IF NOT EXISTS assignments (
 // ── 마이그레이션: 기존 DB에 없는 컬럼 추가 ──────────────────────
 // SQLite는 IF NOT EXISTS 지원 안 해서 try/catch로 처리
 for (const col of [
-  `ALTER TABLE events ADD COLUMN page_group TEXT`,
-  `ALTER TABLE events ADD COLUMN zone       TEXT`,
-  `ALTER TABLE events ADD COLUMN article_y  REAL`,
+  `ALTER TABLE events ADD COLUMN page_group   TEXT`,
+  `ALTER TABLE events ADD COLUMN zone         TEXT`,
+  `ALTER TABLE events ADD COLUMN article_y    REAL`,
+  `ALTER TABLE events ADD COLUMN page_width   INTEGER`,
+  `ALTER TABLE events ADD COLUMN page_height  INTEGER`,
 ]) {
   try { await db.execute(col); } catch { /* 이미 있으면 무시 */ }
 }

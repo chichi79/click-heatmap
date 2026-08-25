@@ -115,7 +115,7 @@ router.get('/heatmap-data', async (req, res) => {
     params.path = path; params.type = type;
 
     const rows = await all(
-      `SELECT x, y FROM events WHERE ${clauses.join(' AND ')} LIMIT 20000`,
+      `SELECT x, y, page_width as pageWidth, page_height as pageHeight FROM events WHERE ${clauses.join(' AND ')} LIMIT 20000`,
       params
     );
     res.json(rows);

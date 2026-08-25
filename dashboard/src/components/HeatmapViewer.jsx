@@ -27,7 +27,7 @@ function heatColor(t) {
   return stops[stops.length - 1][1];
 }
 
-function renderHeatmap(ctx, clicks, width, height, liveMode) {
+function renderHeatmap(ctx, clicks, width, height, liveMode, screenshotPageHeight) {
   ctx.clearRect(0, 0, width, height);
   if (!width || !height || !clicks.length) return;
 
@@ -51,8 +51,15 @@ function renderHeatmap(ctx, clicks, width, height, liveMode) {
     const yPct = Number(click.y);
     if (!Number.isFinite(xPct) || !Number.isFinite(yPct)) continue;
 
+    // 클릭 시점 pageHeight와 스크린샷 pageHeight가 다를 경우 Y 보정
+    let adjustedYPct = yPct;
+    if (screenshotPageHeight && click.pageHeight && click.pageHeight !== screenshotPageHeight) {
+      const absY = (yPct / 100) * click.pageHeight;
+      adjustedYPct = (absY / screenshotPageHeight) * 100;
+    }
+
     const cx = Math.round((xPct / 100) * gw);
-    const cy = Math.round((yPct / 100) * gh);
+    const cy = Math.round((Math.min(adjustedYPct, 100) / 100) * gh);
     const x0 = Math.max(0, cx - r);
     const x1 = Math.min(gw - 1, cx + r);
     const y0 = Math.max(0, cy - r);
@@ -108,8 +115,14 @@ function renderHeatmap(ctx, clicks, width, height, liveMode) {
     const yPct = Number(click.y);
     if (!Number.isFinite(xPct) || !Number.isFinite(yPct)) continue;
 
+    let adjustedYPct = yPct;
+    if (screenshotPageHeight && click.pageHeight && click.pageHeight !== screenshotPageHeight) {
+      const absY = (yPct / 100) * click.pageHeight;
+      adjustedYPct = (absY / screenshotPageHeight) * 100;
+    }
+
     const px = (xPct / 100) * width;
-    const py = (yPct / 100) * height;
+    const py = (Math.min(adjustedYPct, 100) / 100) * height;
 
     ctx.beginPath();
     ctx.arc(px, py, dotRadius, 0, Math.PI * 2);
@@ -167,7 +180,7 @@ export default function HeatmapViewer({ clicks, screenshot, liveMode = false }) 
 
       const ctx = canvas.getContext('2d');
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      renderHeatmap(ctx, clicks, w, h, liveMode);
+      renderHeatmap(ctx, clicks, w, h, liveMode, screenshot?.pageHeight);
     };
 
     draw();

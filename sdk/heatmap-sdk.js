@@ -329,6 +329,7 @@
 
   function baseEvent(extra) {
     const ab = abAssignments[0] ?? null;
+    const { pageWidth, pageHeight } = pageMetrics();
     return {
       path: normalizePath(location.pathname),
       pageGroup: getPageGroup(location.pathname),
@@ -336,6 +337,8 @@
       visitorId: VISITOR_ID,
       ts: Date.now(),
       ...deviceContext(),
+      pageWidth,
+      pageHeight,
       selector: null,
       tagName: null,
       elementText: null,
