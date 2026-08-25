@@ -48,37 +48,40 @@ function heatRgba(t, a = 1) {
   return `rgba(255,0,0,${a})`;
 }
 
-/* ── 네이트 뉴스 레이아웃 상수 (1000px 기준) ─────────────────── */
-const CW = 1000; // canvas width
+/* ── 네이트 뉴스 레이아웃 상수 (실제 스크린샷 992px 기준) ───── */
+const CW = 992;   // 실제 스크린샷 너비
 
-// 메뉴 아이템: 실제 뉴스 사이트 좌표 측정값
+// 메뉴 아이템 X 좌표: 픽셀 분석으로 측정
+// 홈 빨간 밑줄 x=20-30, y=155-167 기준으로 나머지 추정
 const MENUS = [
-  { label: '홈',         x: 30,  w: 28  },
-  { label: '최신뉴스',   x: 68,  w: 60  },
-  { label: '정치',       x: 140, w: 38  },
-  { label: '경제',       x: 190, w: 38  },
-  { label: '사회',       x: 240, w: 38  },
-  { label: '세계',       x: 290, w: 38  },
-  { label: 'IT/과학',    x: 340, w: 52  },
-  { label: '칼럼',       x: 404, w: 36  },
-  { label: '포토',       x: 452, w: 36  },
-  { label: 'TV',         x: 500, w: 22  },
-  { label: '라디오',     x: 534, w: 44  },
-  { label: '랭킹뉴스',   x: 590, w: 56  },
-  { label: '투데이댓글', x: 658, w: 68  },
+  { label: '홈',         x: 8,   w: 40  },
+  { label: '최신뉴스',   x: 55,  w: 78  },
+  { label: '정치',       x: 135, w: 52  },
+  { label: '경제',       x: 193, w: 52  },
+  { label: '사회',       x: 251, w: 52  },
+  { label: '세계',       x: 308, w: 52  },
+  { label: 'IT/과학',    x: 363, w: 62  },
+  { label: '칼럼',       x: 430, w: 50  },
+  { label: '포토',       x: 484, w: 50  },
+  { label: 'TV',         x: 536, w: 34  },
+  { label: '라디오',     x: 571, w: 56  },
+  { label: '랭킹뉴스',   x: 629, w: 66  },
+  { label: '투데이댓글', x: 698, w: 82  },
 ];
 
-// 각 영역 Y 좌표
-const TOPNAV_H  = 26;   // 상단 회색 탑 바
-const LOGO_Y    = TOPNAV_H;
-const LOGO_H    = 72;   // 로고+검색창 영역
-const MENU_Y    = TOPNAV_H + LOGO_H + 1; // 구분선 포함
-const MENU_H    = 38;
+// Y 좌표: 픽셀 측정값
+const MENU_Y = 128;   // 메뉴바 시작 y
+const MENU_H = 44;    // 메뉴바 높이 (홈 밑줄 y=155-167 포함)
+const CH     = 300;   // 캔버스 표시 높이 (메뉴 위 로고 포함)
+
+// 레거시 캔버스 모킹용 상수
+const TOPNAV_H  = 0;
+const LOGO_Y    = 0;
+const LOGO_H    = MENU_Y;
 const BANNER_Y  = MENU_Y + MENU_H;
-const BANNER_H  = 90;
-const CONTENT_Y = BANNER_Y + BANNER_H;
-const CONTENT_H = 260;
-const CH        = CONTENT_Y + CONTENT_H; // total canvas height
+const BANNER_H  = 0;
+const CONTENT_Y = BANNER_Y;
+const CONTENT_H = 0;
 
 /* ── 배경 (네이트 뉴스 UI) 그리기 ───────────────────────────── */
 function drawPageChrome(ctx) {
@@ -298,30 +301,32 @@ function HeatmapCanvas({ bgImage }) {
   const canvasRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
 
+  // 스크린샷이 있으면 전체 이미지 높이, 없으면 CH
+  const canvasH = bgImage ? bgImage.naturalHeight : CH;
+  const canvasW = bgImage ? bgImage.naturalWidth  : CW;
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, CW, CH);
+    ctx.clearRect(0, 0, canvasW, canvasH);
 
     if (bgImage) {
-      // 실제 스크린샷 배경
-      ctx.drawImage(bgImage, 0, 0, CW, CH);
+      ctx.drawImage(bgImage, 0, 0, canvasW, canvasH);
     } else {
-      // 캔버스로 그린 페이지 모킹
       drawPageChrome(ctx);
     }
 
     drawHeatLayer(ctx);
     drawMenuLabels(ctx);
-  }, [bgImage]);
+  }, [bgImage, canvasW, canvasH]);
 
   useEffect(() => { draw(); }, [draw]);
 
   function handleMouseMove(e) {
     const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = CW / rect.width;
-    const scaleY = CH / rect.height;
+    const scaleX = canvasW / rect.width;
+    const scaleY = canvasH / rect.height;
     const mx = (e.clientX - rect.left) * scaleX;
     const my = (e.clientY - rect.top)  * scaleY;
 
@@ -343,8 +348,8 @@ function HeatmapCanvas({ bgImage }) {
     <div className="position-relative">
       <canvas
         ref={canvasRef}
-        width={CW}
-        height={CH}
+        width={canvasW}
+        height={canvasH}
         style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8, cursor: 'crosshair' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
@@ -369,10 +374,20 @@ function HeatmapCanvas({ bgImage }) {
   );
 }
 
+const BG_SRC = '/nate-news-bg.png'; // dashboard/public/ 에 저장된 실제 스크린샷
+
 /* ── 메인 패널 ────────────────────────────────────────────────── */
 export default function ExternalHeatmapPanel() {
   const [bgImage, setBgImage] = useState(null);
   const sorted = [...RAW_DATA].filter(d=>d.clicks>0).sort((a,b)=>b.clicks-a.clicks);
+
+  // 기본: 번들된 스크린샷 로드
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setBgImage(img);
+    img.onerror = () => setBgImage(null); // 없으면 캔버스 모킹
+    img.src = BG_SRC;
+  }, []);
 
   function handleFileChange(e) {
     const file = e.target.files?.[0];
@@ -391,7 +406,7 @@ export default function ExternalHeatmapPanel() {
           <span className="text-muted" style={{fontSize:13}}>2026년 7월 합계 · 외부 클릭통계 데이터</span>
         </div>
         <label className="btn btn-sm btn-outline-secondary" style={{cursor:'pointer', whiteSpace:'nowrap'}}>
-          📷 스크린샷 배경 업로드
+          📷 배경 이미지 교체
           <input type="file" accept="image/*" style={{display:'none'}} onChange={handleFileChange} />
         </label>
       </div>
