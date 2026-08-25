@@ -81,24 +81,29 @@ const MENUS = [
   { label: '투데이댓글', x: 698, w: 82  },
 ];
 
-/* ── 가우시안 히트맵 그리기 ──────────────────────────────────── */
-function drawHeatLayer(ctx, cw, ch, offsetY) {
-  // 히트맵은 메뉴바를 중심으로 위아래로 퍼지도록 확장
-  const spreadPad = 28;                     // 메뉴바 위아래 번짐 여백
-  const my  = MENU_Y - offsetY - spreadPad; // 그리드 시작 y (화면 좌표)
-  const mh  = MENU_H + spreadPad * 2;       // 그리드 높이
-  const grid = new Float32Array(cw * mh);
+/* ── 히트맵 오프스크린 렌더링 → 스크린샷 위에 합성 ─────────── */
+function buildHeatCanvas(cw, ch, offsetY) {
+  // 전체 캔버스 크기로 오프스크린 생성 (잘림 없음)
+  const oc  = document.createElement('canvas');
+  oc.width  = cw;
+  oc.height = ch;
+  const ctx  = oc.getContext('2d');
+  const grid = new Float32Array(cw * ch);
+
+  // 메뉴바 중심 Y (화면 좌표)
+  const menuCY = MENU_Y - offsetY + MENU_H / 2;
 
   for (const m of MENUS) {
     const clicks = getClicks(m.label);
     if (!clicks) continue;
     const t  = logT(clicks);
-    // 반경: 더 넓게 (로그 기반, 최소 24px)
-    const r  = Math.round(24 + t * 44);
+    const r  = Math.round(28 + t * 48);   // 반경: 28~76px
     const cx = Math.round(m.x + m.w / 2);
-    const cy = Math.round(mh / 2);          // 그리드 중앙 = 메뉴바 중앙
-    const s2 = 2 * (r / 2.2) * (r / 2.2);
-    for (let py = Math.max(0, cy-r); py <= Math.min(mh-1, cy+r); py++) {
+    const cy = Math.round(menuCY);
+    const s2 = 2 * (r / 2.0) * (r / 2.0);
+
+    // 그리드 범위는 캔버스 전체 — 잘림 없음
+    for (let py = Math.max(0, cy-r); py <= Math.min(ch-1, cy+r); py++) {
       for (let px = Math.max(0, cx-r); px <= Math.min(cw-1, cx+r); px++) {
         const d2 = (px-cx)**2 + (py-cy)**2;
         if (d2 > r*r) continue;
@@ -109,70 +114,49 @@ function drawHeatLayer(ctx, cw, ch, offsetY) {
 
   let maxVal = 0;
   for (let i = 0; i < grid.length; i++) if (grid[i] > maxVal) maxVal = grid[i];
-  if (!maxVal) return;
+  if (!maxVal) return oc;
 
-  const imgData = ctx.createImageData(cw, mh);
-  const data = imgData.data;
-  const THRESH = 0.008; // 매우 낮은 임계값 → 3천대도 확산 표시
+  const imgData = ctx.createImageData(cw, ch);
+  const data    = imgData.data;
+  const THRESH  = 0.006;   // 매우 낮음 → 3천대도 가시화
 
-  const alphaStops = [
-    [0.00, [100, 180, 255, 0  ]],
-    [0.08, [80,  160, 255, 55 ]],
-    [0.30, [0,   210, 255, 120]],
-    [0.55, [0,   200, 60,  175]],
-    [0.72, [255, 210, 0,   215]],
-    [0.87, [255, 90,  0,   240]],
-    [1.00, [255, 10,  0,   255]],
+  // 정통 히트맵 컬러 (파랑→청→초록→노랑→주황→빨강), alpha만 제어
+  const cStops = [
+    [0.00, [0,   0,   255]],
+    [0.25, [0,   220, 255]],
+    [0.50, [0,   230, 0  ]],
+    [0.70, [255, 230, 0  ]],
+    [0.85, [255, 80,  0  ]],
+    [1.00, [255, 0,   0  ]],
   ];
 
-  for (let iy = 0; iy < mh; iy++) {
+  for (let iy = 0; iy < ch; iy++) {
     for (let ix = 0; ix < cw; ix++) {
       const raw = grid[iy*cw+ix] / maxVal;
       if (raw < THRESH) continue;
-      // 감마 0.55 → 저밀도 영역 더 잘 보임
-      const t = Math.pow((raw - THRESH) / (1 - THRESH), 0.55);
-      let cr=255,cg=10,cb=0,ca=255;
-      for (let s = 0; s < alphaStops.length-1; s++) {
-        const [t0,c0]= alphaStops[s], [t1,c1]= alphaStops[s+1];
+      const t = Math.pow((raw - THRESH) / (1 - THRESH), 0.5); // 감마 0.5
+
+      // 컬러
+      let cr=255, cg=0, cb=0;
+      for (let s = 0; s < cStops.length-1; s++) {
+        const [t0,c0] = cStops[s], [t1,c1] = cStops[s+1];
         if (t <= t1) {
-          const f=(t-t0)/(t1-t0);
-          cr=Math.round(c0[0]+f*(c1[0]-c0[0]));
-          cg=Math.round(c0[1]+f*(c1[1]-c0[1]));
-          cb=Math.round(c0[2]+f*(c1[2]-c0[2]));
-          ca=Math.round(c0[3]+f*(c1[3]-c0[3]));
+          const f = (t-t0)/(t1-t0);
+          cr = Math.round(c0[0]+f*(c1[0]-c0[0]));
+          cg = Math.round(c0[1]+f*(c1[1]-c0[1]));
+          cb = Math.round(c0[2]+f*(c1[2]-c0[2]));
           break;
         }
       }
-      const idx=(iy*cw+ix)*4;
+      // 알파: 저밀도 투명 → 고밀도 반투명 (최대 0.72)
+      const ca = Math.round(t * 184);  // max alpha = 184/255 ≈ 0.72
+
+      const idx = (iy*cw+ix)*4;
       data[idx]=cr; data[idx+1]=cg; data[idx+2]=cb; data[idx+3]=ca;
     }
   }
-  // my가 음수일 수 있으니 클램프
-  const destY = Math.max(0, my);
-  const srcOff = my < 0 ? (-my) * cw * 4 : 0;
-  const drawH  = my < 0 ? mh + my : mh;
-  if (drawH > 0) ctx.putImageData(imgData, 0, destY, 0, my < 0 ? -my : 0, cw, drawH);
-}
-
-function drawMenuLabels(ctx, offsetY) {
-  const my = MENU_Y - offsetY;
-  for (const m of MENUS) {
-    const clicks = getClicks(m.label);
-    const t = logT(clicks);
-    const cx = m.x + m.w / 2;
-    const cy = my + MENU_H / 2;
-    ctx.font = t > 0.5 ? 'bold 12px "Malgun Gothic",sans-serif' : '11px "Malgun Gothic",sans-serif';
-    ctx.fillStyle = t > 0.72 ? '#fff' : '#222';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(m.label, cx, cy - (clicks > 0 ? 5 : 0));
-    if (clicks > 0) {
-      ctx.font = '9px "Malgun Gothic",sans-serif';
-      ctx.fillStyle = t > 0.72 ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.45)';
-      ctx.fillText(fmtNum(clicks), cx, cy + 7);
-    }
-  }
-  ctx.textAlign = 'left';
+  ctx.putImageData(imgData, 0, 0);
+  return oc;
 }
 
 /* ── 히트맵 캔버스 ────────────────────────────────────────────── */
@@ -191,21 +175,19 @@ function HeatmapCanvas({ bgImage }) {
     ctx.clearRect(0, 0, cw, ch);
 
     if (bgImage) {
-      // 스크린샷 크롭: CROP_Y ~ CROP_Y+CROP_H 만 그리기
+      // 스크린샷 크롭: CROP_Y ~ CROP_Y+CROP_H 만 표시 (원본 그대로)
       ctx.drawImage(bgImage, 0, oy, cw, ch, 0, 0, cw, ch);
     } else {
-      // 폴백: 흰 배경 + 메뉴바 힌트
-      ctx.fillStyle = '#fafafa';
+      // 폴백: 흰 배경
+      ctx.fillStyle = '#f8f8f8';
       ctx.fillRect(0, 0, cw, ch);
-      ctx.fillStyle = '#f0f0f0';
+      ctx.fillStyle = '#ebebeb';
       ctx.fillRect(0, MENU_Y - oy, cw, MENU_H);
-      ctx.strokeStyle = '#e0e0e0';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(0, MENU_Y - oy, cw, MENU_H);
     }
 
-    drawHeatLayer(ctx, cw, ch, oy);
-    drawMenuLabels(ctx, oy);
+    // 히트맵 오프스크린 합성 (텍스트 오버레이 없음)
+    const heatCanvas = buildHeatCanvas(cw, ch, oy);
+    ctx.drawImage(heatCanvas, 0, 0);
   }, [bgImage, cw, ch, oy]);
 
   useEffect(() => { draw(); }, [draw]);
