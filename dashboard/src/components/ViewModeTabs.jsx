@@ -42,6 +42,13 @@ export const VIEW_MODES = [
     icon: 'bi-signpost-split',
     subtitle: '클릭 경로 — 사용자가 어떤 순서로 탐색하는지 봅니다',
   },
+  {
+    id: 'external',
+    label: '클릭통계',
+    shortLabel: '통계',
+    icon: 'bi-clipboard-data',
+    subtitle: '외부 클릭통계 데이터 히트맵 — 뉴스 상단 메뉴 분석',
+  },
 ];
 
 export function getModeMeta(modeId) {

@@ -12,6 +12,7 @@ import AnalyticsPanel from './components/AnalyticsPanel.jsx';
 import FunnelPanel from './components/FunnelPanel.jsx';
 import AbTestPanel from './components/AbTestPanel.jsx';
 import DashboardCard from './components/DashboardCard.jsx';
+import ExternalHeatmapPanel from './components/ExternalHeatmapPanel.jsx';
 import { presetToMinutes, WINDOW_PRESETS } from './components/TimePresets.jsx';
 import { useLiveFeed } from './hooks/useLiveFeed.js';
 import { apiUrl } from './api.js';
@@ -95,6 +96,7 @@ export default function App() {
   const isPath = viewMode === 'path';
   const isAnalytics = viewMode === 'analytics';
   const isAb = viewMode === 'ab';
+  const isExternal = viewMode === 'external';
   const modeMeta = getModeMeta(viewMode);
 
   const activeExperimentForPath = experiments.find(
@@ -341,7 +343,7 @@ export default function App() {
 
       <main className="dashboard-main">
         <div className="dashboard-shell">
-      {!isOverview && (
+      {!isOverview && !isExternal && (
       <FilterPanel
         mode={viewMode}
         paths={paths}
@@ -435,6 +437,8 @@ export default function App() {
           <ElementClickRanking elements={elements} />
         </DashboardCard>
       )}
+
+      {isExternal && <ExternalHeatmapPanel />}
         </div>
       </main>
     </div>
