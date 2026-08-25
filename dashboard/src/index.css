@@ -1496,48 +1496,139 @@ body {
 
 
 /* ── ExternalHeatmapPanel ─────────────────────────────────────── */
+/* ── ExternalHeatmapPanel ─────────────────────────────────────── */
 .ext-heatmap-panel {
   padding: 0 0 2rem;
 }
 
-.ext-bar-chart {
+/* 헤더 */
+.ext-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.ext-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  letter-spacing: -0.2px;
+}
+.ext-subtitle {
+  font-size: 12px;
+  color: var(--bs-secondary);
+  margin-top: 2px;
+}
+.ext-upload-btn {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  color: var(--bs-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.ext-upload-btn:hover {
+  border-color: var(--bs-primary);
+  color: var(--bs-primary);
+}
+
+/* 본문 레이아웃 */
+.ext-body {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .ext-body { grid-template-columns: 1fr; }
+}
+
+/* 히트맵 열 */
+.ext-map-col {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--bs-body-bg);
+}
+
+/* 데이터 열 */
+.ext-stat-col {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--bs-body-bg);
+}
+.ext-stat-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bs-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+/* 데이터 행 */
+.ext-data-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
-
-.ext-bar-row {
-  display: flex;
+.ext-data-row {
+  display: grid;
+  grid-template-columns: 28px 68px 1fr auto;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+.ext-data-row:last-child { border-bottom: none; }
+
+.ext-data-rank {
   font-size: 13px;
+  text-align: center;
+  line-height: 1;
+  color: var(--bs-secondary);
 }
-
-.ext-bar-label {
-  width: 80px;
-  flex-shrink: 0;
-  text-align: right;
+.ext-data-rank span {
+  font-size: 11px;
+  color: var(--bs-tertiary-color, #aaa);
+}
+.ext-data-name {
+  font-size: 12px;
+  font-weight: 500;
   color: var(--bs-body-color);
+  white-space: nowrap;
 }
-
-.ext-bar-track {
-  flex: 1;
-  height: 22px;
-  background: var(--bs-border-color, #e5e7eb);
+.ext-data-bar-wrap {
+  height: 8px;
+  background: var(--bs-border-color);
   border-radius: 4px;
   overflow: hidden;
 }
-
-.ext-bar-fill {
+.ext-data-bar {
   height: 100%;
   border-radius: 4px;
-  transition: width 0.4s ease;
+  transition: width 0.5s cubic-bezier(.4,0,.2,1);
 }
-
-.ext-bar-value {
-  width: 72px;
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--bs-secondary-color, #6c757d);
-  text-align: right;
+.ext-data-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.ext-data-clicks {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  white-space: nowrap;
+}
+.ext-data-share {
+  font-size: 10px;
+  color: var(--bs-secondary);
 }
