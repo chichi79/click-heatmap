@@ -1,137 +1,338 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
-// 7월 네이트 뉴스 상단 메뉴 클릭 데이터
+/* ── 7월 클릭 데이터 ──────────────────────────────────────────── */
 const RAW_DATA = [
-  { menu: '최신뉴스', clicks: 199621 },
-  { menu: '랭킹뉴스', clicks: 172417 },
-  { menu: '사회',     clicks: 79915  },
-  { menu: '경제',     clicks: 75601  },
-  { menu: '정치',     clicks: 56131  },
-  { menu: '종합',     clicks: 43020  },
-  { menu: '세계',     clicks: 40585  },
-  { menu: 'IT/과학',  clicks: 23896  },
-  { menu: '포토',     clicks: 5065   },
-  { menu: '칼럼',     clicks: 5865   },
-  { menu: '투데이댓글', clicks: 3854 },
-  { menu: 'TV',       clicks: 3741   },
-  { menu: '라디오',   clicks: 0      },
+  { menu: '최신뉴스',   clicks: 199621 },
+  { menu: '랭킹뉴스',   clicks: 172417 },
+  { menu: '사회',       clicks: 79915  },
+  { menu: '경제',       clicks: 75601  },
+  { menu: '정치',       clicks: 56131  },
+  { menu: '종합',       clicks: 43020  },
+  { menu: '세계',       clicks: 40585  },
+  { menu: 'IT/과학',    clicks: 23896  },
+  { menu: '칼럼',       clicks: 5865   },
+  { menu: '포토',       clicks: 5065   },
+  { menu: '투데이댓글', clicks: 3854   },
+  { menu: 'TV',         clicks: 3741   },
+  { menu: '라디오',     clicks: 0      },
 ];
 
-// 실제 네이트 뉴스 상단 메뉴 순서 & 대략적 위치 (px, 1000px 기준 레이아웃)
-const MENU_LAYOUT = [
-  { menu: '홈',       x: 38,  w: 30  },
-  { menu: '최신뉴스', x: 80,  w: 62  },
-  { menu: '정치',     x: 155, w: 40  },
-  { menu: '경제',     x: 207, w: 40  },
-  { menu: '사회',     x: 259, w: 40  },
-  { menu: '세계',     x: 310, w: 40  },
-  { menu: 'IT/과학',  x: 362, w: 55  },
-  { menu: '칼럼',     x: 430, w: 38  },
-  { menu: '포토',     x: 480, w: 38  },
-  { menu: 'TV',       x: 530, w: 24  },
-  { menu: '라디오',   x: 566, w: 46  },
-  { menu: '랭킹뉴스', x: 626, w: 58  },
-  { menu: '투데이댓글', x: 697, w: 70 },
-];
-
-const max = Math.max(...RAW_DATA.map((d) => d.clicks));
-
-function heatColor(t) {
-  // cold→hot: 파랑→청록→초록→노랑→주황→빨강
-  const stops = [
-    [0.00, [200, 220, 255]],
-    [0.25, [0,   190, 255]],
-    [0.50, [0,   210, 0  ]],
-    [0.70, [255, 210, 0  ]],
-    [0.85, [255, 90,  0  ]],
-    [1.00, [255, 0,   0  ]],
-  ];
-  for (let i = 0; i < stops.length - 1; i++) {
-    const [t0, c0] = stops[i];
-    const [t1, c1] = stops[i + 1];
-    if (t <= t1) {
-      const f = (t - t0) / (t1 - t0);
-      const r = Math.round(c0[0] + f * (c1[0] - c0[0]));
-      const g = Math.round(c0[1] + f * (c1[1] - c0[1]));
-      const b = Math.round(c0[2] + f * (c1[2] - c0[2]));
-      return `rgb(${r},${g},${b})`;
-    }
-  }
-  return 'rgb(255,0,0)';
-}
+const maxClicks = Math.max(...RAW_DATA.map(d => d.clicks));
 
 function getClicks(menu) {
-  return RAW_DATA.find((d) => d.menu === menu)?.clicks ?? 0;
+  return RAW_DATA.find(d => d.menu === menu)?.clicks ?? 0;
 }
 
 function formatNum(n) {
+  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만';
   return n.toLocaleString();
 }
 
-// ── 메뉴 히트맵 캔버스 ──────────────────────────────────────────
-function MenuHeatmapCanvas() {
+/* ── 히트 컬러 ────────────────────────────────────────────────── */
+function heatRgba(t, a = 1) {
+  const stops = [
+    [0.00, [30,  120, 255]],
+    [0.25, [0,   200, 255]],
+    [0.50, [0,   210, 60 ]],
+    [0.70, [255, 210, 0  ]],
+    [0.85, [255, 100, 0  ]],
+    [1.00, [255, 0,   0  ]],
+  ];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const [t0, c0] = stops[i], [t1, c1] = stops[i + 1];
+    if (t <= t1) {
+      const f = (t - t0) / (t1 - t0);
+      return `rgba(${Math.round(c0[0]+f*(c1[0]-c0[0]))},${Math.round(c0[1]+f*(c1[1]-c0[1]))},${Math.round(c0[2]+f*(c1[2]-c0[2]))},${a})`;
+    }
+  }
+  return `rgba(255,0,0,${a})`;
+}
+
+/* ── 네이트 뉴스 레이아웃 상수 (1000px 기준) ─────────────────── */
+const CW = 1000; // canvas width
+
+// 메뉴 아이템: 실제 뉴스 사이트 좌표 측정값
+const MENUS = [
+  { label: '홈',         x: 30,  w: 28  },
+  { label: '최신뉴스',   x: 68,  w: 60  },
+  { label: '정치',       x: 140, w: 38  },
+  { label: '경제',       x: 190, w: 38  },
+  { label: '사회',       x: 240, w: 38  },
+  { label: '세계',       x: 290, w: 38  },
+  { label: 'IT/과학',    x: 340, w: 52  },
+  { label: '칼럼',       x: 404, w: 36  },
+  { label: '포토',       x: 452, w: 36  },
+  { label: 'TV',         x: 500, w: 22  },
+  { label: '라디오',     x: 534, w: 44  },
+  { label: '랭킹뉴스',   x: 590, w: 56  },
+  { label: '투데이댓글', x: 658, w: 68  },
+];
+
+// 각 영역 Y 좌표
+const TOPNAV_H  = 26;   // 상단 회색 탑 바
+const LOGO_Y    = TOPNAV_H;
+const LOGO_H    = 72;   // 로고+검색창 영역
+const MENU_Y    = TOPNAV_H + LOGO_H + 1; // 구분선 포함
+const MENU_H    = 38;
+const BANNER_Y  = MENU_Y + MENU_H;
+const BANNER_H  = 90;
+const CONTENT_Y = BANNER_Y + BANNER_H;
+const CONTENT_H = 260;
+const CH        = CONTENT_Y + CONTENT_H; // total canvas height
+
+/* ── 배경 (네이트 뉴스 UI) 그리기 ───────────────────────────── */
+function drawPageChrome(ctx) {
+  // ① 전체 배경
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, CW, CH);
+
+  // ② 상단 탑바 (회색)
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillRect(0, 0, CW, TOPNAV_H);
+  ctx.strokeStyle = '#e0e0e0';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, TOPNAV_H); ctx.lineTo(CW, TOPNAV_H); ctx.stroke();
+  ctx.font = '11px sans-serif'; ctx.fillStyle = '#888';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('네이트 메인가기', 10, TOPNAV_H / 2);
+  ctx.textAlign = 'right';
+  ctx.fillText('뉴스  판  TV  특톡  만화  게임  쇼핑  더보기', CW - 10, TOPNAV_H / 2);
+  ctx.textAlign = 'left';
+
+  // ③ 로고 영역
+  // nate (빨강)
+  ctx.font = 'bold 32px Georgia, serif';
+  ctx.fillStyle = '#dd0000';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('nate', 20, LOGO_Y + LOGO_H / 2);
+  // 뉴스 (검정)
+  ctx.font = 'bold 22px "Malgun Gothic", sans-serif';
+  ctx.fillStyle = '#111';
+  ctx.fillText(' 뉴스', 86, LOGO_Y + LOGO_H / 2);
+
+  // 검색창
+  const SX = 200, SW = 340, SY = LOGO_Y + 18, SH = 36;
+  ctx.strokeStyle = '#cc0000';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(SX, SY, SW, SH);
+  // 검색 아이콘
+  ctx.fillStyle = '#cc0000';
+  ctx.font = '18px sans-serif';
+  ctx.fillText('🔍', SX + SW - 26, SY + SH / 2);
+
+  // 우측 링크
+  ctx.font = '13px "Malgun Gothic", sans-serif';
+  ctx.fillStyle = '#444';
+  ctx.textAlign = 'right';
+  ctx.fillText('스포츠  연예  판  날씨', CW - 16, LOGO_Y + LOGO_H / 2);
+  ctx.textAlign = 'left';
+
+  // ④ 로고-메뉴 구분선
+  ctx.strokeStyle = '#e5e5e5';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, MENU_Y - 1); ctx.lineTo(CW, MENU_Y - 1); ctx.stroke();
+
+  // ⑤ 메뉴 바 배경
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, MENU_Y, CW, MENU_H);
+
+  // ⑥ 메뉴 하단 구분선
+  ctx.strokeStyle = '#e5e5e5';
+  ctx.beginPath(); ctx.moveTo(0, MENU_Y + MENU_H); ctx.lineTo(CW, MENU_Y + MENU_H); ctx.stroke();
+
+  // ⑦ 광고 배너 플레이스홀더
+  ctx.fillStyle = '#fafafa';
+  ctx.fillRect(0, BANNER_Y, CW, BANNER_H);
+  ctx.strokeStyle = '#efefef';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0, BANNER_Y, CW, BANNER_H);
+  ctx.fillStyle = '#bbb';
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('광고', CW / 2, BANNER_Y + BANNER_H / 2);
+  ctx.textAlign = 'left';
+
+  // ⑧ 뉴스 콘텐츠 플레이스홀더 (단순한 선들로 기사 레이아웃 암시)
+  const drawArticleLines = (x, y, w) => {
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(x, y, w * 0.7, 16);
+    ctx.fillRect(x, y + 24, w * 0.85, 13);
+    ctx.fillRect(x, y + 44, w * 0.6, 11);
+    ctx.fillRect(x, y + 62, w * 0.4, 11);
+  };
+  // 좌측 메인 기사 블록 (이미지+텍스트)
+  ctx.fillStyle = '#e8e8e8';
+  ctx.fillRect(20, CONTENT_Y + 20, 200, 140); // 이미지 자리
+  drawArticleLines(240, CONTENT_Y + 20, 360);
+  // 우측 서브 기사들
+  drawArticleLines(640, CONTENT_Y + 20,  320);
+  ctx.strokeStyle = '#eee'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(640, CONTENT_Y + 80); ctx.lineTo(960, CONTENT_Y + 80); ctx.stroke();
+  drawArticleLines(640, CONTENT_Y + 95,  320);
+  ctx.beginPath(); ctx.moveTo(640, CONTENT_Y + 155); ctx.lineTo(960, CONTENT_Y + 155); ctx.stroke();
+  drawArticleLines(640, CONTENT_Y + 170, 320);
+  // 하단 썸네일 4개
+  for (let i = 0; i < 4; i++) {
+    const tx = 20 + i * 240, ty = CONTENT_Y + 178;
+    ctx.fillStyle = '#e0e0e0';
+    ctx.fillRect(tx, ty, 220, 65);
+    ctx.fillStyle = '#ccc';
+    ctx.fillRect(tx, ty + 72, 220, 11);
+    ctx.fillRect(tx, ty + 90, 160, 11);
+  }
+}
+
+/* ── 히트맵 가우시안 레이어 그리기 ──────────────────────────── */
+function drawHeatLayer(ctx) {
+  const MY = MENU_Y, MH = MENU_H;
+  // Float32 그리드 (메뉴 바 전체 너비 × 높이)
+  const grid = new Float32Array(CW * MH);
+
+  for (const m of MENUS) {
+    const clicks = getClicks(m.label);
+    if (!clicks) continue;
+    const t = clicks / maxClicks;
+    const r  = Math.round(14 + t * 30);
+    const cx = Math.round(m.x + m.w / 2);
+    const cy = Math.round(MH / 2);
+    const s2 = 2 * (r / 3) * (r / 3);
+    for (let py = Math.max(0, cy-r); py <= Math.min(MH-1, cy+r); py++) {
+      for (let px = Math.max(0, cx-r); px <= Math.min(CW-1, cx+r); px++) {
+        const d2 = (px-cx)**2 + (py-cy)**2;
+        if (d2 > r*r) continue;
+        grid[py * CW + px] += clicks * Math.exp(-d2 / s2);
+      }
+    }
+  }
+
+  let maxVal = 0;
+  for (let i = 0; i < grid.length; i++) if (grid[i] > maxVal) maxVal = grid[i];
+  if (!maxVal) return;
+
+  const imgData = ctx.createImageData(CW, MH);
+  const data = imgData.data;
+  const THRESH = 0.035;
+  const hStops = [
+    [0.00, [30,  120, 255, 55 ]],
+    [0.25, [0,   200, 255, 120]],
+    [0.50, [0,   210, 60,  175]],
+    [0.70, [255, 210, 0,   210]],
+    [0.85, [255, 100, 0,   235]],
+    [1.00, [255, 0,   0,   255]],
+  ];
+
+  for (let iy = 0; iy < MH; iy++) {
+    for (let ix = 0; ix < CW; ix++) {
+      const raw = grid[iy * CW + ix] / maxVal;
+      if (raw < THRESH) continue;
+      const t = (raw - THRESH) / (1 - THRESH);
+      let cr=255,cg=0,cb=0,ca=255;
+      for (let s = 0; s < hStops.length-1; s++) {
+        const [t0,c0]= hStops[s], [t1,c1]= hStops[s+1];
+        if (t <= t1) {
+          const f=(t-t0)/(t1-t0);
+          cr=Math.round(c0[0]+f*(c1[0]-c0[0]));
+          cg=Math.round(c0[1]+f*(c1[1]-c0[1]));
+          cb=Math.round(c0[2]+f*(c1[2]-c0[2]));
+          ca=Math.round(c0[3]+f*(c1[3]-c0[3]));
+          break;
+        }
+      }
+      const idx=(iy*CW+ix)*4;
+      data[idx]=cr; data[idx+1]=cg; data[idx+2]=cb; data[idx+3]=ca;
+    }
+  }
+  ctx.putImageData(imgData, 0, MY);
+}
+
+/* ── 메뉴 텍스트 + 빨간 언더라인(홈) 오버레이 ───────────────── */
+function drawMenuLabels(ctx) {
+  const MY = MENU_Y, MH = MENU_H;
+  for (const m of MENUS) {
+    const clicks = getClicks(m.label);
+    const t = maxClicks > 0 ? clicks / maxClicks : 0;
+    const cx = m.x + m.w / 2;
+    const cy = MY + MH / 2;
+
+    // 홈 = 빨간 언더라인
+    if (m.label === '홈') {
+      ctx.fillStyle = '#dd0000';
+      ctx.fillRect(m.x, MY + MH - 3, m.w, 3);
+    }
+
+    ctx.font = t > 0.35 ? 'bold 13px "Malgun Gothic",sans-serif' : '13px "Malgun Gothic",sans-serif';
+    ctx.fillStyle = t > 0.6 ? '#fff' : '#333';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(m.label, cx, cy - (clicks > 0 ? 6 : 0));
+
+    // 클릭수 소형 숫자
+    if (clicks > 0) {
+      ctx.font = '10px "Malgun Gothic",sans-serif';
+      ctx.fillStyle = t > 0.6 ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.45)';
+      ctx.fillText(formatNum(clicks), cx, cy + 8);
+    }
+  }
+  ctx.textAlign = 'left';
+}
+
+/* ── 컬러 범례 ────────────────────────────────────────────────── */
+function ColorLegend() {
+  const steps = 24;
+  return (
+    <div className="d-flex align-items-center gap-2 mt-3 mb-1">
+      <span style={{ fontSize: 11, color: 'var(--bs-secondary)' }}>낮음</span>
+      <div style={{
+        flex: 1, height: 8, borderRadius: 4,
+        background: `linear-gradient(to right, ${
+          Array.from({ length: steps }, (_, i) => heatRgba(i/(steps-1), 0.85)).join(',')
+        })`,
+      }} />
+      <span style={{ fontSize: 11, color: 'var(--bs-secondary)' }}>높음</span>
+    </div>
+  );
+}
+
+/* ── 메인 캔버스 ──────────────────────────────────────────────── */
+function HeatmapCanvas({ bgImage }) {
   const canvasRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
 
-  const CANVAS_W = 780;
-  const CANVAS_H = 44;
-  const MENU_Y   = 8;
-  const MENU_H   = 28;
-
-  useEffect(() => {
+  const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.clearRect(0, 0, CW, CH);
 
-    // 배경
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-    // 구분선
-    ctx.strokeStyle = '#e5e7eb';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, CANVAS_H - 1);
-    ctx.lineTo(CANVAS_W, CANVAS_H - 1);
-    ctx.stroke();
-
-    for (const item of MENU_LAYOUT) {
-      const clicks = getClicks(item.menu);
-      const t = max > 0 ? clicks / max : 0;
-      const alpha = clicks > 0 ? Math.max(0.15, t * 0.85) : 0;
-      const color = clicks > 0 ? heatColor(t) : null;
-
-      // 히트맵 박스
-      if (color) {
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.roundRect(item.x, MENU_Y, item.w, MENU_H, 4);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-
-      // 메뉴 텍스트
-      ctx.font = clicks > 0 && t > 0.3 ? 'bold 12px sans-serif' : '12px sans-serif';
-      ctx.fillStyle = t > 0.6 ? '#fff' : '#333';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(item.menu, item.x + item.w / 2, MENU_Y + MENU_H / 2);
+    if (bgImage) {
+      // 실제 스크린샷 배경
+      ctx.drawImage(bgImage, 0, 0, CW, CH);
+    } else {
+      // 캔버스로 그린 페이지 모킹
+      drawPageChrome(ctx);
     }
-  }, []);
+
+    drawHeatLayer(ctx);
+    drawMenuLabels(ctx);
+  }, [bgImage]);
+
+  useEffect(() => { draw(); }, [draw]);
 
   function handleMouseMove(e) {
     const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = CANVAS_W / rect.width;
+    const scaleX = CW / rect.width;
+    const scaleY = CH / rect.height;
     const mx = (e.clientX - rect.left) * scaleX;
-    const my = (e.clientY - rect.top) * (CANVAS_H / rect.height);
+    const my = (e.clientY - rect.top)  * scaleY;
 
-    for (const item of MENU_LAYOUT) {
-      if (mx >= item.x && mx <= item.x + item.w && my >= MENU_Y && my <= MENU_Y + MENU_H) {
-        const clicks = getClicks(item.menu);
-        const pct = max > 0 ? ((clicks / max) * 100).toFixed(1) : 0;
-        setTooltip({ menu: item.menu, clicks, pct, x: e.clientX, y: e.clientY });
+    if (my < MENU_Y || my > MENU_Y + MENU_H) { setTooltip(null); return; }
+    for (const m of MENUS) {
+      if (mx >= m.x && mx <= m.x + m.w) {
+        const clicks = getClicks(m.label);
+        const rank = clicks > 0
+          ? [...RAW_DATA].filter(d=>d.clicks>0).sort((a,b)=>b.clicks-a.clicks).findIndex(d=>d.menu===m.label)+1
+          : null;
+        setTooltip({ label: m.label, clicks, rank, x: e.clientX, y: e.clientY });
         return;
       }
     }
@@ -142,122 +343,95 @@ function MenuHeatmapCanvas() {
     <div className="position-relative">
       <canvas
         ref={canvasRef}
-        width={CANVAS_W}
-        height={CANVAS_H}
-        style={{ width: '100%', height: 'auto', cursor: 'crosshair', border: '1px solid #e5e7eb', borderRadius: 6 }}
+        width={CW}
+        height={CH}
+        style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8, cursor: 'crosshair' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
       />
       {tooltip && (
         <div style={{
-          position: 'fixed', left: tooltip.x + 12, top: tooltip.y - 10,
-          background: 'rgba(0,0,0,0.85)', color: '#fff',
-          padding: '6px 10px', borderRadius: 6, fontSize: 13, zIndex: 9999,
-          pointerEvents: 'none', whiteSpace: 'nowrap',
+          position: 'fixed', left: tooltip.x+14, top: tooltip.y-14,
+          background: 'rgba(10,10,10,0.9)', color:'#fff',
+          padding:'7px 12px', borderRadius:7, fontSize:13,
+          zIndex:9999, pointerEvents:'none', whiteSpace:'nowrap', lineHeight:1.7,
+          boxShadow:'0 4px 20px rgba(0,0,0,0.35)',
         }}>
-          <strong>{tooltip.menu}</strong><br />
-          클릭: {formatNum(tooltip.clicks)}<br />
-          최대 대비: {tooltip.pct}%
+          <strong>{tooltip.label}</strong>
+          {tooltip.rank && <span style={{marginLeft:6,fontSize:11,opacity:0.65}}>#{tooltip.rank}</span>}
+          <br />
+          {tooltip.clicks > 0
+            ? <>클릭 수: <strong>{tooltip.clicks.toLocaleString()}</strong>회</>
+            : <span style={{opacity:0.5}}>데이터 없음</span>}
         </div>
       )}
     </div>
   );
 }
 
-// ── 막대 차트 ────────────────────────────────────────────────────
-function BarChart({ data }) {
-  const sorted = [...data].filter(d => d.clicks > 0).sort((a, b) => b.clicks - a.clicks);
-  const chartMax = sorted[0]?.clicks || 1;
-
-  return (
-    <div className="ext-bar-chart">
-      {sorted.map((d) => {
-        const t = d.clicks / max;
-        const pct = (d.clicks / chartMax) * 100;
-        return (
-          <div key={d.menu} className="ext-bar-row">
-            <div className="ext-bar-label">{d.menu}</div>
-            <div className="ext-bar-track">
-              <div
-                className="ext-bar-fill"
-                style={{ width: `${pct}%`, background: heatColor(t) }}
-              />
-            </div>
-            <div className="ext-bar-value">{formatNum(d.clicks)}</div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── 컬러 범례 ─────────────────────────────────────────────────────
-function ColorLegend() {
-  const steps = 20;
-  return (
-    <div className="d-flex align-items-center gap-2 mt-2 mb-3">
-      <span style={{ fontSize: 11, color: 'var(--bs-secondary)' }}>낮음</span>
-      <div style={{
-        flex: 1, height: 10, borderRadius: 5,
-        background: `linear-gradient(to right, ${
-          Array.from({ length: steps }, (_, i) => heatColor(i / (steps - 1))).join(', ')
-        })`,
-      }} />
-      <span style={{ fontSize: 11, color: 'var(--bs-secondary)' }}>높음</span>
-    </div>
-  );
-}
-
-// ── 메인 패널 ────────────────────────────────────────────────────
+/* ── 메인 패널 ────────────────────────────────────────────────── */
 export default function ExternalHeatmapPanel() {
+  const [bgImage, setBgImage] = useState(null);
+  const sorted = [...RAW_DATA].filter(d=>d.clicks>0).sort((a,b)=>b.clicks-a.clicks);
+
+  function handleFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => setBgImage(img);
+    img.src = url;
+  }
+
   return (
     <div className="ext-heatmap-panel">
-      <div className="mb-3">
-        <h5 className="mb-1">네이트 뉴스 PC — 상단 메뉴 클릭 히트맵</h5>
-        <span className="text-muted" style={{ fontSize: 13 }}>2026년 7월 · 외부 클릭통계 데이터</span>
+      <div className="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+          <h5 className="mb-1">네이트 뉴스 PC — 상단 메뉴 클릭 히트맵</h5>
+          <span className="text-muted" style={{fontSize:13}}>2026년 7월 합계 · 외부 클릭통계 데이터</span>
+        </div>
+        <label className="btn btn-sm btn-outline-secondary" style={{cursor:'pointer', whiteSpace:'nowrap'}}>
+          📷 스크린샷 배경 업로드
+          <input type="file" accept="image/*" style={{display:'none'}} onChange={handleFileChange} />
+        </label>
       </div>
 
-      {/* 메뉴 히트맵 */}
-      <div className="card mb-4 p-3">
-        <div className="d-flex justify-content-between align-items-center mb-2">
-          <strong style={{ fontSize: 14 }}>메뉴바 히트맵</strong>
-          <span className="badge bg-secondary">실제 메뉴 레이아웃 기준</span>
-        </div>
-
-        {/* 실제 뉴스 사이트 상단 모킹 */}
-        <div style={{
-          background: '#f8f9fa', borderRadius: 8, padding: '8px 12px',
-          marginBottom: 8, fontSize: 12, color: '#888',
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          <span style={{ color: '#e00', fontWeight: 'bold', fontSize: 16 }}>nate</span>
-          <span style={{ fontWeight: 'bold' }}>뉴스</span>
-          <span style={{ marginLeft: 'auto' }}>스포츠 연예 판 날씨</span>
-        </div>
-
-        <MenuHeatmapCanvas />
+      <div className="card p-3 mb-4">
+        <HeatmapCanvas bgImage={bgImage} />
         <ColorLegend />
-
-        <div className="row g-2 mt-1">
-          {RAW_DATA.filter(d => d.clicks > 0).sort((a,b) => b.clicks - a.clicks).slice(0,3).map((d, i) => (
-            <div key={d.menu} className="col-4">
-              <div className="text-center p-2 rounded" style={{
-                background: heatColor(d.clicks / max),
-                color: d.clicks / max > 0.5 ? '#fff' : '#333',
-              }}>
-                <div style={{ fontSize: 11 }}>#{i+1}</div>
-                <div style={{ fontWeight: 'bold', fontSize: 14 }}>{d.menu}</div>
-                <div style={{ fontSize: 12 }}>{formatNum(d.clicks)}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <p style={{fontSize:12, color:'var(--bs-secondary)', marginBottom:0}}>
+          * 메뉴 위에 마우스를 올리면 클릭 수를 확인할 수 있습니다 · 히트맵은 메뉴바 영역에만 표시됩니다
+        </p>
       </div>
 
-      {/* 막대 차트 */}
-      <div className="card p-3">
-        <strong style={{ fontSize: 14 }} className="d-block mb-3">메뉴별 클릭 수 (7월 합계)</strong>
-        <BarChart data={RAW_DATA} />
+      {/* 순위 요약 */}
+      <div className="card p-4">
+        <strong className="d-block mb-3" style={{fontSize:14}}>클릭 순위 (7월)</strong>
+        <div className="row g-2">
+          {sorted.map((d, i) => {
+            const t = d.clicks / maxClicks;
+            const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':null;
+            return (
+              <div key={d.menu} className="col-6 col-md-4 col-lg-3">
+                <div style={{
+                  padding:'10px 12px', borderRadius:8,
+                  background: heatRgba(t, 0.13),
+                  border:`1px solid ${heatRgba(t, 0.35)}`,
+                  display:'flex', alignItems:'center', gap:8,
+                }}>
+                  {medal
+                    ? <span style={{fontSize:18,lineHeight:1}}>{medal}</span>
+                    : <span style={{fontSize:12,color:'#999',width:20,textAlign:'center'}}>#{i+1}</span>
+                  }
+                  <div>
+                    <div style={{fontWeight:'bold',fontSize:13}}>{d.menu}</div>
+                    <div style={{fontSize:12,color:'var(--bs-secondary)'}}>{d.clicks.toLocaleString()}회</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
