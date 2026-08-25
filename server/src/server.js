@@ -12,7 +12,33 @@ import { setupLiveServer } from './live.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
-app.use(cors());
+
+// 허용 도메인 목록 (환경변수로 추가 가능)
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+// 기본 허용 도메인
+const DEFAULT_ORIGINS = [
+  'https://on-deal.nate.com',
+  'https://news.nate.com',
+  'https://click-heatmap.vercel.app',
+];
+
+const allowedSet = new Set([...DEFAULT_ORIGINS, ...ALLOWED_ORIGINS]);
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      // origin 없는 요청 (서버간, curl 등) 허용
+      if (!origin) return cb(null, true);
+      if (allowedSet.has(origin)) return cb(null, true);
+      cb(new Error(`CORS: ${origin} not allowed`));
+    },
+    credentials: true,
+  })
+);
 
 app.use(
   '/api/heatmap',
