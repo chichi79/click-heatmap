@@ -39,7 +39,16 @@ const MONTHLY_DATA = {
     },
     pan: {
       pc:     { snb: [], gnb: [] },
-      mobile: { snb: [], gnb: [] },
+      mobile: {
+        snb: [],
+        gnb: [
+          { menu: '톡톡',        clicks: 304983 },
+          { menu: '홈',          clicks: 98874  },
+          { menu: '기자 PICK 판',clicks: 18293  },
+          { menu: '배틀톡',      clicks: 14391  },
+          { menu: '팬톡',        clicks: 11336  },
+        ],
+      },
     },
   },
 };
