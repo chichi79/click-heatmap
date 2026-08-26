@@ -502,11 +502,47 @@ function DataSection({ items, total, helpers, label }) {
 }
 
 function DataPanel({ helpers }) {
-  const { snb, gnb, total, gnbTotal } = helpers;
+  const { snb, gnb, top } = helpers;
+  const { max, logT } = helpers;
+
+  const allItems = [
+    ...( top.length ? top.map(d => ({ ...d, tag: 'TOP' })) : [] ),
+    ...( gnb.length ? gnb.map(d => ({ ...d, tag: 'GNB' })) : [] ),
+    ...( snb.length ? snb.map(d => ({ ...d, tag: 'SNB' })) : [] ),
+  ].filter(d => d.clicks > 0).sort((a, b) => b.clicks - a.clicks);
+
+  const grandTotal = allItems.reduce((s, d) => s + d.clicks, 0);
+
+  const tagColor = { TOP: '#6f42c1', GNB: '#0d6efd', SNB: '#198754' };
+
+  if (!allItems.length) return null;
   return (
     <div className="ext-data-panel">
-      {gnb.length > 0 && <DataSection items={gnb} total={gnbTotal} helpers={helpers} label="GNB 글로벌 메뉴"/>}
-      {snb.length > 0 && <DataSection items={snb} total={total}    helpers={helpers} label="SNB 뉴스 메뉴"/>}
+      {allItems.map((d, i) => {
+        const t     = logT(d.clicks);
+        const pct   = (d.clicks / max * 100).toFixed(1);
+        const share = grandTotal > 0 ? (d.clicks / grandTotal * 100).toFixed(1) : '—';
+        return (
+          <div key={`${d.tag}-${d.menu}`} className="ext-data-row">
+            <div className="ext-data-rank">
+              {i < 3 ? ['🥇','🥈','🥉'][i] : <span>{i+1}</span>}
+            </div>
+            <div className="ext-data-top">
+              <div className="ext-data-name">
+                <span className="ext-data-tag" style={{ background: tagColor[d.tag] }}>{d.tag}</span>
+                {d.menu}
+              </div>
+              <div className="ext-data-meta">
+                <span className="ext-data-clicks">{d.clicks.toLocaleString()}</span>
+                <span className="ext-data-share">{share}%</span>
+              </div>
+            </div>
+            <div className="ext-data-bar-wrap">
+              <div className="ext-data-bar" style={{ width:`${pct}%`, background:heatRgba(t, 0.85) }}/>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -565,10 +601,9 @@ export default function ExternalHeatmapPanel() {
         <div>
           <div className="ext-title">네이트 · 상단 메뉴 클릭 히트맵</div>
           <div className="ext-subtitle">
-            {hasGnb && <>GNB {helpers.gnbTotal.toLocaleString()}회</>}
-            {hasGnb && hasSnb && ' · '}
-            {hasSnb && <>SNB {helpers.total.toLocaleString()}회 클릭</>}
-            {!hasGnb && !hasSnb && '데이터 없음'}
+            {(hasGnb || hasSnb)
+              ? <>총 {(helpers.gnbTotal + helpers.total + helpers.topTotal).toLocaleString()}회 클릭</>
+              : '데이터 없음'}
           </div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
