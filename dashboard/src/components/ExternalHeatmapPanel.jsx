@@ -340,7 +340,42 @@ function buildHeatCanvas(cw, ch, cfg, helpers) {
 
   let maxVal = 0;
   for (let i = 0; i < grid.length; i++) if (grid[i] > maxVal) maxVal = grid[i];
-  if (!maxVal) return oc;
+
+  // 섹션만 있는 탭(본문)에서는 main grid가 비어 있어도 섹션 캔버스만 합성하고 반환
+  if (!maxVal) {
+    if (sectionCanvases.length) {
+      for (const { sg, t } of sectionCanvases) {
+        let sgMax = 0;
+        for (let i = 0; i < sg.length; i++) if (sg[i] > sgMax) sgMax = sg[i];
+        if (!sgMax) continue;
+        const sc2 = document.createElement('canvas');
+        sc2.width = tw; sc2.height = th;
+        const sc2ctx = sc2.getContext('2d');
+        const sgImg2 = sc2ctx.createImageData(tw, th);
+        const sd2 = sgImg2.data;
+        for (let i = 0; i < tw * th; i++) {
+          const raw = sg[i] / sgMax;
+          if (raw < 0.02) continue;
+          const tv = Math.pow(raw, 0.55) * t;
+          let cr=255,cg=0,cb=30;
+          for (let s = 0; s < cStops.length-1; s++) {
+            const [t0,c0]=cStops[s],[t1,c1]=cStops[s+1];
+            if (tv<=t1){const f=(tv-t0)/(t1-t0);cr=Math.round(c0[0]+f*(c1[0]-c0[0]));cg=Math.round(c0[1]+f*(c1[1]-c0[1]));cb=Math.round(c0[2]+f*(c1[2]-c0[2]));break;}
+          }
+          const ca = Math.round(raw * (3-2*raw) * 195);
+          const idx = i*4; sd2[idx]=cr; sd2[idx+1]=cg; sd2[idx+2]=cb; sd2[idx+3]=ca;
+        }
+        sc2ctx.putImageData(sgImg2, 0, 0);
+        ctx.drawImage(sc2, 0, 0);
+      }
+    }
+    const out0 = document.createElement('canvas');
+    out0.width=tw; out0.height=th;
+    const o0ctx = out0.getContext('2d');
+    o0ctx.filter = 'blur(3px)';
+    o0ctx.drawImage(oc, 0, 0);
+    return out0;
+  }
 
   // 박스 블러
   const blurred = new Float32Array(tw * th);
