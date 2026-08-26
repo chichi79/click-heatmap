@@ -40,7 +40,10 @@ const MONTHLY_DATA = {
     pan: {
       pc:     { snb: [], gnb: [], top: [] },
       mobile: {
-        snb: [],
+        snb: [
+          { menu: '오늘의 톡',    clicks: 125401  },
+          { menu: '톡커들의 선택',clicks: 1106739 },
+        ],
         gnb: [
           { menu: '톡톡',        clicks: 304983 },
           { menu: '홈',          clicks: 98874  },
