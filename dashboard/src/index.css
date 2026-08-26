@@ -1570,7 +1570,7 @@ body {
 /* 본문 레이아웃 */
 .ext-body {
   display: grid;
-  grid-template-columns: 1fr 260px;
+  grid-template-columns: 1fr 320px;
   gap: 16px;
   align-items: start;
 }
