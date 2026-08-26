@@ -407,33 +407,34 @@ export default function App() {
       )}
 
       {(isUx || isRealtime) && (
-        <div className={`grid${isRealtime ? ' grid-live' : ''}`}>
-          <DashboardCard
-            title={isRealtime ? 'RealTime 히트맵' : 'UX 히트맵'}
-            className={`mb-4 mb-lg-0${isRealtime ? ' card-heatmap' : ''}`}
-            bodyClassName="pb-3"
-          >
-            <HeatmapViewer
-              clicks={heatmapClicks}
-              screenshot={screenshot}
-              liveMode={isRealtime}
-            />
-          </DashboardCard>
-
-          {isRealtime ? (
-            <DashboardCard title="방금 클릭됨" className="card-feed" bodyClassName="pt-0">
-              <ClickFeed items={feed} />
-            </DashboardCard>
-          ) : (
-            <DashboardCard title="스크롤 깊이" className="mb-4 mb-lg-0">
-              <ScrollDepthChart data={scrollDepth.data} total={scrollDepth.total} />
-            </DashboardCard>
-          )}
+        <div className="hm-panel">
+          <div className="ext-body">
+            <div className="ext-map-col hm-map-col">
+              <HeatmapViewer
+                clicks={heatmapClicks}
+                screenshot={screenshot}
+                liveMode={isRealtime}
+              />
+            </div>
+            <div className="ext-stat-col hm-stat-col">
+              {isRealtime ? (
+                <>
+                  <div className="ext-stat-head">방금 클릭됨</div>
+                  <ClickFeed items={feed} />
+                </>
+              ) : (
+                <>
+                  <div className="ext-stat-head">스크롤 깊이</div>
+                  <ScrollDepthChart data={scrollDepth.data} total={scrollDepth.total} />
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {isUx && (
-        <DashboardCard title="클릭 요소 랭킹" className="mt-1">
+        <DashboardCard title="클릭 요소 랭킹" className="mt-3">
           <ElementClickRanking elements={elements} />
         </DashboardCard>
       )}
