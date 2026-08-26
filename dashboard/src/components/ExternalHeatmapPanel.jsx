@@ -38,7 +38,7 @@ const MONTHLY_DATA = {
       },
     },
     pan: {
-      pc:     { snb: [], gnb: [] },
+      pc:     { snb: [], gnb: [], top: [] },
       mobile: {
         snb: [],
         gnb: [
@@ -47,6 +47,11 @@ const MONTHLY_DATA = {
           { menu: '기자 PICK 판',clicks: 18293  },
           { menu: '배틀톡',      clicks: 14391  },
           { menu: '팬톡',        clicks: 11336  },
+        ],
+        top: [
+          { menu: '판',   clicks: 41891  },
+          { menu: 'MY',   clicks: 239015 },
+          { menu: '검색', clicks: 529327 },
         ],
       },
     },
@@ -136,21 +141,27 @@ const PAGE_CONFIG = {
         bgSrc:    '/nate-pan-mobile-bg.png',
         ssW:      629,
         displayW: 390,
-        gnbY:   60,  gnbH: 40,
-        menuY:  155, menuH: 35,
+        topY:   15,  topH:  30,   // 최상단 유틸 바 (판 로고, MY, 검색)
+        gnbY:   60,  gnbH:  40,   // GNB 탭 (홈, 톡톡, 팬톡...)
+        menuY:  155, menuH: 35,   // SNB
         cropY:  0,   cropH: 838,
+        topMenus: [
+          { label: '판',    x: 0,   w: 220 },  // n판 로고 + 새로운 판 보기 버튼
+          { label: 'MY',    x: 548, w: 40  },
+          { label: '검색',  x: 588, w: 41  },
+        ],
         gnbMenus: [
-          { label: '홈',          x: 10,  w: 44 },
-          { label: '톡톡',        x: 90,  w: 52 },
-          { label: '팬톡',        x: 176, w: 52 },
-          { label: '배틀톡',      x: 262, w: 62 },
-          { label: '기자 PICK 판',x: 358, w: 120 },
+          { label: '홈',          x: 0,   w: 100 },
+          { label: '톡톡',        x: 100, w: 95  },
+          { label: '팬톡',        x: 195, w: 95  },
+          { label: '배틀톡',      x: 290, w: 120 },
+          { label: '기자 PICK 판',x: 410, w: 180 },
         ],
         snbMenus: [
-          { label: '오늘의 톡',    x: 10,  w: 90 },
-          { label: '톡커들의 선택',x: 160, w: 100 },
-          { label: '엔터톡',       x: 310, w: 64 },
-          { label: '화제의 톡톡',  x: 430, w: 100 },
+          { label: '오늘의 톡',    x: 0,   w: 130 },
+          { label: '톡커들의 선택',x: 160, w: 140 },
+          { label: '엔터톡',       x: 320, w: 95  },
+          { label: '화제의 톡톡',  x: 430, w: 150 },
         ],
       },
     },
@@ -161,14 +172,16 @@ const PAGE_CONFIG = {
 function makeHelpers(deviceData) {
   const snb = deviceData?.snb ?? [];
   const gnb = deviceData?.gnb ?? [];
-  const all = [...snb, ...gnb];
+  const top = deviceData?.top ?? [];
+  const all = [...snb, ...gnb, ...top];
   const max      = all.length ? Math.max(...all.map(d => d.clicks)) : 1;
   const logMax   = Math.log(max + 1);
   const total    = snb.reduce((s, d) => s + d.clicks, 0);
   const gnbTotal = gnb.reduce((s, d) => s + d.clicks, 0);
+  const topTotal = top.reduce((s, d) => s + d.clicks, 0);
   const logT     = (c) => c ? Math.log(c + 1) / logMax : 0;
   const getC     = (label) => all.find(d => d.menu === label)?.clicks ?? 0;
-  return { max, total, gnbTotal, logT, getC, snb, gnb };
+  return { max, total, gnbTotal, topTotal, logT, getC, snb, gnb, top };
 }
 
 function fmtNum(n) {
@@ -203,7 +216,8 @@ const HEAT_PAD = 70; // 좌우상하 여백 — 블롭이 잘리지 않도록
 
 function buildHeatCanvas(cw, ch, cfg, helpers) {
   const { logT, getC } = helpers;
-  const { gnbY, gnbH, menuY, menuH, gnbMenus, snbMenus, cropY } = cfg;
+  const { gnbY, gnbH, menuY, menuH, gnbMenus, snbMenus, cropY,
+          topY, topH, topMenus } = cfg;
   const tw = cw + HEAT_PAD * 2;
   const th = ch + HEAT_PAD * 2;
   const oc  = document.createElement('canvas');
@@ -213,6 +227,27 @@ function buildHeatCanvas(cw, ch, cfg, helpers) {
   // 블롭 Y 중심 (HEAT_PAD 만큼 아래로 이동)
   const snbCY = menuY - cropY + menuH / 2 + HEAT_PAD;
   const gnbCY = gnbY  - cropY + gnbH  / 2 + HEAT_PAD;
+
+  // TOP 레이어 (최상단 유틸 바)
+  if (topMenus && topY != null) {
+    const topCY = topY - cropY + (topH ?? 30) / 2 + HEAT_PAD;
+    for (const m of topMenus) {
+      const clicks = getC(m.label);
+      if (!clicks) continue;
+      const t  = logT(clicks);
+      const r  = Math.round(18 + t * 30);
+      const cx = Math.round(m.x + m.w / 2 + HEAT_PAD);
+      const cy = Math.round(topCY);
+      const s2 = 2 * (r / 1.8) * (r / 1.8);
+      for (let py = Math.max(0, cy-r); py <= Math.min(th-1, cy+r); py++) {
+        for (let px = Math.max(0, cx-r); px <= Math.min(tw-1, cx+r); px++) {
+          const d2 = (px-cx)**2 + (py-cy)**2;
+          if (d2 > r*r) continue;
+          grid[py*tw+px] += clicks * Math.exp(-d2/s2);
+        }
+      }
+    }
+  }
 
   // SNB 레이어
   for (const m of snbMenus) {
@@ -318,7 +353,8 @@ function buildHeatCanvas(cw, ch, cfg, helpers) {
 function HeatmapCanvas({ bgImage, helpers, cfg }) {
   const canvasRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
-  const { ssW, cropY, cropH, gnbY, gnbH, menuY, menuH, gnbMenus, snbMenus } = cfg;
+  const { ssW, cropY, cropH, gnbY, gnbH, menuY, menuH, gnbMenus, snbMenus,
+          topY, topH, topMenus } = cfg;
   const cw = ssW, ch = cropH, oy = cropY;
   // 패딩 포함 캔버스 크기
   const tw = cw + HEAT_PAD * 2;
@@ -347,6 +383,15 @@ function HeatmapCanvas({ bgImage, helpers, cfg }) {
     // PAD를 제거해 실제 스크린샷 좌표로 변환
     const mx = (e.clientX - rect.left) * (tw / rect.width) - HEAT_PAD;
     const my = (e.clientY - rect.top)  * (th / rect.height) - HEAT_PAD + oy;
+    // TOP 유틸 바
+    if (topMenus && topY != null && my >= topY && my <= topY + (topH ?? 30)) {
+      for (const m of topMenus) {
+        if (mx >= m.x && mx <= m.x + m.w) {
+          setTooltip({ label: m.label, clicks: helpers.getC(m.label), tag: 'TOP', x: e.clientX, y: e.clientY });
+          return;
+        }
+      }
+    }
     // GNB
     if (my >= gnbY && my <= gnbY + gnbH) {
       for (const m of gnbMenus) {
