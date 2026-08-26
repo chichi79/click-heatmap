@@ -1521,6 +1521,35 @@ body {
   color: var(--bs-secondary);
   margin-top: 2px;
 }
+/* PC/모바일 디바이스 토글 */
+.ext-device-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bs-tertiary-bg, #f0f0f0);
+  border-radius: 8px;
+  padding: 3px;
+}
+.ext-device-tab {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--bs-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.ext-device-tab.active {
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.ext-device-tab:hover:not(.active) {
+  color: var(--bs-body-color);
+}
+
 .ext-upload-btn {
   font-size: 12px;
   padding: 5px 12px;
@@ -1555,6 +1584,9 @@ body {
   border-radius: 10px;
   padding: 12px;
   background: var(--bs-body-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* 데이터 열 */
@@ -1571,6 +1603,22 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 12px;
+}
+
+/* 섹션 레이블 */
+.ext-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--bs-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 10px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--bs-border-color);
+  opacity: 0.7;
+}
+.ext-section-label:first-child {
+  margin-top: 0;
 }
 
 /* 데이터 행 */
@@ -1590,17 +1638,17 @@ body {
 .ext-data-row:last-child { border-bottom: none; }
 
 .ext-data-rank {
-  font-size: 13px;
+  font-size: 15px;
   text-align: center;
   line-height: 1;
   color: var(--bs-secondary);
 }
 .ext-data-rank span {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--bs-tertiary-color, #aaa);
 }
 .ext-data-name {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--bs-body-color);
   white-space: nowrap;
@@ -1623,12 +1671,40 @@ body {
   gap: 1px;
 }
 .ext-data-clicks {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--bs-body-color);
   white-space: nowrap;
 }
 .ext-data-share {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--bs-secondary);
+}
+
+/* ── 월별 탭 ─────────────────────────────────────────────────── */
+.ext-month-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.ext-month-tab {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  color: var(--bs-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ext-month-tab:hover {
+  border-color: var(--bs-primary);
+  color: var(--bs-primary);
+}
+.ext-month-tab.active {
+  background: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: #fff;
 }
