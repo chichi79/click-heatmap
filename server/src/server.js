@@ -26,6 +26,20 @@ const DEFAULT_ORIGINS = [
   'https://click-heatmap.vercel.app',
 ];
 
+// 와일드카드 패턴 허용 (환경변수로 추가 가능)
+// 예: ALLOWED_ORIGIN_PATTERNS=*.shopby.co.kr,*.nate.com
+const ALLOWED_PATTERNS = (process.env.ALLOWED_ORIGIN_PATTERNS || '')
+  .split(',')
+  .map((p) => p.trim())
+  .filter(Boolean)
+  .map((p) => new RegExp('^https://' + p.replace(/\./g, '\\.').replace(/\*/g, '[^.]+') + '$'));
+
+// 기본 와일드카드 패턴
+const DEFAULT_PATTERNS = [
+  /^https:\/\/[^.]+\.shopby\.co\.kr$/,
+];
+
+const allPatterns = [...DEFAULT_PATTERNS, ...ALLOWED_PATTERNS];
 const allowedSet = new Set([...DEFAULT_ORIGINS, ...ALLOWED_ORIGINS]);
 
 app.use(
@@ -34,6 +48,7 @@ app.use(
       // origin 없는 요청 (서버간, curl 등) 허용
       if (!origin) return cb(null, true);
       if (allowedSet.has(origin)) return cb(null, true);
+      if (allPatterns.some((re) => re.test(origin))) return cb(null, true);
       cb(new Error(`CORS: ${origin} not allowed`));
     },
     credentials: true,

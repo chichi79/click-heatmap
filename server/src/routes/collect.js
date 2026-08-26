@@ -13,12 +13,12 @@ const INSERT_EVENT_SQL = `
     type, x, y, path, session, visitor_id, experiment_id, variant, ts,
     viewport_width, viewport_height, screen_width, device_pixel_ratio, device_type,
     selector, tag_name, element_text,
-    page_group, zone, article_y, page_width, page_height
+    page_group, zone, article_y, page_width, page_height, page_title
   ) VALUES (
     :type, :x, :y, :path, :session, :visitorId, :experimentId, :variant, :ts,
     :viewportWidth, :viewportHeight, :screenWidth, :devicePixelRatio, :deviceType,
     :selector, :tagName, :elementText,
-    :pageGroup, :zone, :articleY, :pageWidth, :pageHeight
+    :pageGroup, :zone, :articleY, :pageWidth, :pageHeight, :pageTitle
   )`;
 
 const UPSERT_SCREENSHOT_SQL = `
@@ -57,6 +57,7 @@ function normalizeEvent(e) {
     articleY:         typeof e.articleY === 'number' ? e.articleY : null,
     pageWidth:        typeof e.pageWidth === 'number' ? e.pageWidth : null,
     pageHeight:       typeof e.pageHeight === 'number' ? e.pageHeight : null,
+    pageTitle:        typeof e.pageTitle === 'string' ? e.pageTitle.slice(0, 300) : null,
   };
 }
 

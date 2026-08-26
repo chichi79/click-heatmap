@@ -108,6 +108,7 @@ for (const col of [
   `ALTER TABLE events ADD COLUMN article_y    REAL`,
   `ALTER TABLE events ADD COLUMN page_width   INTEGER`,
   `ALTER TABLE events ADD COLUMN page_height  INTEGER`,
+  `ALTER TABLE events ADD COLUMN page_title   TEXT`,
 ]) {
   try { await db.execute(col); } catch { /* 이미 있으면 무시 */ }
 }

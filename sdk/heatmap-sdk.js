@@ -343,6 +343,7 @@
     return {
       path: normalizePath(location.pathname),
       pageGroup: getPageGroup(location.pathname),
+      pageTitle: document.title || null,
       session: SESSION,
       visitorId: VISITOR_ID,
       ts: Date.now(),

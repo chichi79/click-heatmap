@@ -41,6 +41,7 @@ router.get('/paths', async (req, res) => {
     const rows = await all(
       `SELECT path,
               MAX(page_group) as pageGroup,
+              MAX(page_title) as pageTitle,
               SUM(CASE WHEN type = 'click'    THEN 1 ELSE 0 END) as clicks,
               SUM(CASE WHEN type = 'scroll'   THEN 1 ELSE 0 END) as scrolls,
               SUM(CASE WHEN type = 'pageview' THEN 1 ELSE 0 END) as pageviews,
