@@ -57,6 +57,12 @@ const MONTHLY_DATA = {
           { menu: 'MY',   clicks: 239015 },
           { menu: '검색', clicks: 529327 },
         ],
+        section: [
+          { menu: '오늘의판',        clicks: 4791923 },
+          { menu: '새로운베플',       clicks: 343814  },
+          { menu: '실시간연애상담소', clicks: 127273  },
+          { menu: '실시간회사톡',     clicks: 43172   },
+        ],
       },
     },
   },
@@ -142,13 +148,21 @@ const PAGE_CONFIG = {
         snbMenus: [],
       },
       mobile: {
-        bgSrc:    '/nate-pan-mobile-bg.png',
+        bgSrc:    '/nate-pan-full-bg.png',
         ssW:      629,
         displayW: 390,
         topY:   15,  topH:  30,   // 최상단 유틸 바 (판 로고, MY, 검색)
         gnbY:   60,  gnbH:  40,   // GNB 탭 (홈, 톡톡, 팬톡...)
         menuY:  155, menuH: 35,   // SNB
-        cropY:  0,   cropH: 838,
+        cropY:  0,   cropH: 2488, // 전체 (헤더 838 + 콘텐츠 1650)
+        // 콘텐츠 섹션 (헤더 838px + content 오프셋)
+        sectionY: 30, sectionH: 28,
+        sectionMenus: [
+          { label: '오늘의판',        x: 0, w: 629, cy: 838 + 10   },
+          { label: '새로운베플',       x: 0, w: 629, cy: 838 + 480  },
+          { label: '실시간연애상담소', x: 0, w: 629, cy: 838 + 980  },
+          { label: '실시간회사톡',     x: 0, w: 629, cy: 838 + 1275 },
+        ],
         topMenus: [
           { label: '판',    x: 0,   w: 220 },  // n판 로고 + 새로운 판 보기 버튼
           { label: 'MY',    x: 548, w: 40  },
@@ -175,10 +189,11 @@ const PAGE_CONFIG = {
 
 /* ── 유틸 ─────────────────────────────────────────────────────── */
 function makeHelpers(deviceData) {
-  const snb = deviceData?.snb ?? [];
-  const gnb = deviceData?.gnb ?? [];
-  const top = deviceData?.top ?? [];
-  const all = [...snb, ...gnb, ...top];
+  const snb     = deviceData?.snb     ?? [];
+  const gnb     = deviceData?.gnb     ?? [];
+  const top     = deviceData?.top     ?? [];
+  const section = deviceData?.section ?? [];
+  const all = [...snb, ...gnb, ...top, ...section];
   const max      = all.length ? Math.max(...all.map(d => d.clicks)) : 1;
   const logMax   = Math.log(max + 1);
   const total    = snb.reduce((s, d) => s + d.clicks, 0);
@@ -186,7 +201,7 @@ function makeHelpers(deviceData) {
   const topTotal = top.reduce((s, d) => s + d.clicks, 0);
   const logT     = (c) => c ? Math.log(c + 1) / logMax : 0;
   const getC     = (label) => all.find(d => d.menu === label)?.clicks ?? 0;
-  return { max, total, gnbTotal, topTotal, logT, getC, snb, gnb, top };
+  return { max, total, gnbTotal, topTotal, logT, getC, snb, gnb, top, section };
 }
 
 function fmtNum(n) {
@@ -222,7 +237,7 @@ const HEAT_PAD = 70; // 좌우상하 여백 — 블롭이 잘리지 않도록
 function buildHeatCanvas(cw, ch, cfg, helpers) {
   const { logT, getC } = helpers;
   const { gnbY, gnbH, menuY, menuH, gnbMenus, snbMenus, cropY,
-          topY, topH, topMenus } = cfg;
+          topY, topH, topMenus, sectionMenus } = cfg;
   const tw = cw + HEAT_PAD * 2;
   const th = ch + HEAT_PAD * 2;
   const oc  = document.createElement('canvas');
@@ -232,6 +247,26 @@ function buildHeatCanvas(cw, ch, cfg, helpers) {
   // 블롭 Y 중심 (HEAT_PAD 만큼 아래로 이동)
   const snbCY = menuY - cropY + menuH / 2 + HEAT_PAD;
   const gnbCY = gnbY  - cropY + gnbH  / 2 + HEAT_PAD;
+
+  // SECTION 레이어 (콘텐츠 영역 섹션 헤더) — cy 절대좌표 사용
+  if (sectionMenus?.length) {
+    for (const m of sectionMenus) {
+      const clicks = getC(m.label);
+      if (!clicks) continue;
+      const t  = logT(clicks);
+      const r  = Math.round(28 + t * 50);
+      const cx = Math.round(m.x + m.w / 2 + HEAT_PAD);
+      const cy = Math.round(m.cy - cropY + HEAT_PAD);
+      const s2 = 2 * (r / 1.6) * (r / 1.6);
+      for (let py = Math.max(0, cy-r); py <= Math.min(th-1, cy+r); py++) {
+        for (let px = Math.max(0, cx-r); px <= Math.min(tw-1, cx+r); px++) {
+          const d2 = (px-cx)**2 + (py-cy)**2;
+          if (d2 > r*r) continue;
+          grid[py*tw+px] += clicks * Math.exp(-d2/s2);
+        }
+      }
+    }
+  }
 
   // TOP 레이어 (최상단 유틸 바)
   if (topMenus && topY != null) {
@@ -359,7 +394,7 @@ function HeatmapCanvas({ bgImage, helpers, cfg }) {
   const canvasRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
   const { ssW, cropY, cropH, gnbY, gnbH, menuY, menuH, gnbMenus, snbMenus,
-          topY, topH, topMenus } = cfg;
+          topY, topH, topMenus, sectionMenus } = cfg;
   const cw = ssW, ch = cropH, oy = cropY;
   // 패딩 포함 캔버스 크기
   const tw = cw + HEAT_PAD * 2;
@@ -388,6 +423,16 @@ function HeatmapCanvas({ bgImage, helpers, cfg }) {
     // PAD를 제거해 실제 스크린샷 좌표로 변환
     const mx = (e.clientX - rect.left) * (tw / rect.width) - HEAT_PAD;
     const my = (e.clientY - rect.top)  * (th / rect.height) - HEAT_PAD + oy;
+    // SECTION
+    if (sectionMenus) {
+      for (const m of sectionMenus) {
+        const sH = 30;
+        if (my >= m.cy - sH/2 && my <= m.cy + sH/2 && mx >= m.x && mx <= m.x + m.w) {
+          setTooltip({ label: m.label, clicks: helpers.getC(m.label), tag: '섹션', x: e.clientX, y: e.clientY });
+          return;
+        }
+      }
+    }
     // TOP 유틸 바
     if (topMenus && topY != null && my >= topY && my <= topY + (topH ?? 30)) {
       for (const m of topMenus) {
@@ -502,18 +547,19 @@ function DataSection({ items, total, helpers, label }) {
 }
 
 function DataPanel({ helpers }) {
-  const { snb, gnb, top } = helpers;
+  const { snb, gnb, top, section } = helpers;
   const { max, logT } = helpers;
 
   const allItems = [
-    ...( top.length ? top.map(d => ({ ...d, tag: 'TOP' })) : [] ),
-    ...( gnb.length ? gnb.map(d => ({ ...d, tag: 'GNB' })) : [] ),
-    ...( snb.length ? snb.map(d => ({ ...d, tag: 'SNB' })) : [] ),
+    ...( section.length ? section.map(d => ({ ...d, tag: 'SEC' })) : [] ),
+    ...( top.length     ? top.map(d     => ({ ...d, tag: 'TOP' })) : [] ),
+    ...( gnb.length     ? gnb.map(d     => ({ ...d, tag: 'GNB' })) : [] ),
+    ...( snb.length     ? snb.map(d     => ({ ...d, tag: 'SNB' })) : [] ),
   ].filter(d => d.clicks > 0).sort((a, b) => b.clicks - a.clicks);
 
   const grandTotal = allItems.reduce((s, d) => s + d.clicks, 0);
 
-  const tagColor = { TOP: '#6f42c1', GNB: '#0d6efd', SNB: '#198754' };
+  const tagColor = { SEC: '#dc3545', TOP: '#6f42c1', GNB: '#0d6efd', SNB: '#198754' };
 
   if (!allItems.length) return null;
   return (
