@@ -2,6 +2,9 @@
   "buildCommand": "npm run build:dashboard",
   "outputDirectory": "dashboard/dist",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/:path*",         "destination": "https://click-heatmap.onrender.com/api/:path*" },
+    { "source": "/screenshots/:path*", "destination": "https://click-heatmap.onrender.com/screenshots/:path*" },
+    { "source": "/ws/:path*",          "destination": "https://click-heatmap.onrender.com/ws/:path*" },
+    { "source": "/(.*)",               "destination": "/index.html" }
   ]
 }
