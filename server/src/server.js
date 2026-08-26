@@ -24,6 +24,9 @@ const DEFAULT_ORIGINS = [
   'https://on-deal.nate.com',
   'https://news.nate.com',
   'https://click-heatmap.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:4000',
+  'http://localhost:3000',
 ];
 
 // 와일드카드 패턴 허용 (환경변수로 추가 가능)
