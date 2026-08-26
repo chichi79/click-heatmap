@@ -484,13 +484,15 @@ function DataSection({ items, total, helpers, label }) {
             <div className="ext-data-rank">
               {i < 3 ? ['🥇','🥈','🥉'][i] : <span>{i+1}</span>}
             </div>
-            <div className="ext-data-name">{d.menu}</div>
+            <div className="ext-data-top">
+              <div className="ext-data-name">{d.menu}</div>
+              <div className="ext-data-meta">
+                <span className="ext-data-clicks">{d.clicks.toLocaleString()}</span>
+                <span className="ext-data-share">{share}%</span>
+              </div>
+            </div>
             <div className="ext-data-bar-wrap">
               <div className="ext-data-bar" style={{ width:`${pct}%`, background:heatRgba(t, 0.85) }}/>
-            </div>
-            <div className="ext-data-meta">
-              <span className="ext-data-clicks">{d.clicks.toLocaleString()}</span>
-              <span className="ext-data-share">{share}%</span>
             </div>
           </div>
         );
