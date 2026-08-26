@@ -4,12 +4,12 @@ import { useEffect, useRef } from 'react';
 // t: 0.0(저밀도) ~ 1.0(고밀도), [r, g, b, a] 반환
 function heatColor(t) {
   const stops = [
-    [0.00, [0,   0,   255, 110]],
-    [0.25, [0,   190, 255, 175]],
-    [0.50, [0,   210, 0,   210]],
-    [0.70, [255, 210, 0,   230]],
-    [0.85, [255, 90,  0,   245]],
-    [1.00, [255, 0,   0,   255]],
+    [0.00, [0,   0,   255,  80]],
+    [0.25, [0,   190, 255, 140]],
+    [0.50, [0,   210, 0,   180]],
+    [0.70, [255, 210, 0,   210]],
+    [0.85, [255, 90,  0,   230]],
+    [1.00, [255, 0,   0,   240]],
   ];
   for (let i = 0; i < stops.length - 1; i++) {
     const [t0, c0] = stops[i];
@@ -35,17 +35,21 @@ function renderHeatmap(ctx, clicks, width, height, liveMode, screenshot) {
   const ssW = screenshot?.pageWidth  || null;
   const ssH = screenshot?.pageHeight || null;
 
-  // 밀도 연산은 절반 해상도로 수행 (성능): 20k 클릭도 ~60ms 이내
-  const SCALE = Math.min(1.0, 500 / Math.max(width, height));
+  // 밀도 연산: 최대 800px 해상도로 수행 (품질↑)
+  const SCALE = Math.min(1.0, 800 / Math.max(width, height));
   const gw = Math.max(1, Math.round(width * SCALE));
   const gh = Math.max(1, Math.round(height * SCALE));
 
-  // 픽셀 단위 가우시안 반경 (축소 해상도 기준)
-  const radius = liveMode
-    ? Math.max(14, Math.min(38, gw * 0.05))
-    : Math.max(12, Math.min(32, gw * 0.042));
+  // 픽셀 단위 가우시안 반경 — 클릭 수가 많을수록 반경 줄임
+  const clickCount = clicks.length;
+  const baseRadius = liveMode
+    ? Math.max(10, Math.min(28, gw * 0.032))
+    : Math.max(8,  Math.min(24, gw * 0.026));
+  // 클릭이 많을수록 반경 축소 (50개 기준, 최대 30% 감소)
+  const densityFactor = Math.max(0.7, 1 - (clickCount / 50) * 0.3);
+  const radius = baseRadius * densityFactor;
   const r = Math.ceil(radius);
-  const sigma2x2 = 2 * (radius / 3) * (radius / 3);
+  const sigma2x2 = 2 * (radius / 2.5) * (radius / 2.5);
 
   // ① Float32Array 밀도 누적 — 절대 포화 없음
   const grid = new Float32Array(gw * gh);
@@ -95,7 +99,7 @@ function renderHeatmap(ctx, clicks, width, height, liveMode, screenshot) {
   // ③ ImageData 채색 — cold→hot 컬러 스케일
   const imageData = ctx.createImageData(width, height);
   const data = imageData.data;
-  const THRESHOLD = 0.03; // 3% 미만은 투명 처리
+  const THRESHOLD = 0.06; // 6% 미만은 투명 처리 (저밀도 노이즈 제거)
 
   for (let iy = 0; iy < height; iy++) {
     const gy = Math.min(gh - 1, Math.round((iy / height) * gh));

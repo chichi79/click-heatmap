@@ -67,7 +67,7 @@ function windowLabel(preset) {
 }
 
 export default function App() {
-  const [viewMode, setViewMode] = useState('overview');
+  const [viewMode, setViewMode] = useState('realtime');
   const [paths, setPaths] = useState([]);
   const [selectedPath, setSelectedPath] = useState('');
   const [pathMetric, setPathMetric] = useState('clicks');

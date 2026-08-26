@@ -3,7 +3,17 @@ import TimePresets from './TimePresets.jsx';
 import { pathMetricLabel, pathMetricValue } from './AnalyticsPanel.jsx';
 
 // ─── URL → 읽기 좋은 라벨 변환 ───────────────────────────────
-function pathLabel(urlPath) {
+function pathLabel(p) {
+  // p는 path 객체({ path, pageTitle, pageGroup, ... }) 또는 문자열
+  const urlPath = typeof p === 'string' ? p : p?.path;
+  const pageTitle = typeof p === 'object' ? p?.pageTitle : null;
+  const pageGroup = typeof p === 'object' ? p?.pageGroup : null;
+
+  // pageTitle이 있으면 우선 사용
+  if (pageTitle) return pageTitle;
+  // pageGroup이 있으면 사용
+  if (pageGroup) return pageGroup;
+
   if (!urlPath || urlPath === '/') return '홈 (/)';
   // 쿼리스트링 제거, 슬래시 정리
   const clean = urlPath.split('?')[0].replace(/\/$/, '');
@@ -31,7 +41,7 @@ function PathPicker({ paths, value, onChange, pathMetric, onPathMetricChange }) 
   const filtered = query.trim()
     ? paths.filter(p =>
         p.path.toLowerCase().includes(query.toLowerCase()) ||
-        pathLabel(p.path).toLowerCase().includes(query.toLowerCase())
+        pathLabel(p).toLowerCase().includes(query.toLowerCase())
       )
     : paths;
 
@@ -68,7 +78,7 @@ function PathPicker({ paths, value, onChange, pathMetric, onPathMetricChange }) 
         >
           {current ? (
             <span className="path-trigger-inner">
-              <span className="path-trigger-label">{pathLabel(current.path)}</span>
+              <span className="path-trigger-label">{pathLabel(current)}</span>
               <span className="path-trigger-url">{current.path}</span>
               <span className="path-trigger-badge">
                 {pathMetricValue(current, pathMetric)} {pathMetricLabel(pathMetric)}
@@ -125,7 +135,7 @@ function PathPicker({ paths, value, onChange, pathMetric, onPathMetricChange }) 
                 className={`path-picker-item${p.path === value ? ' active' : ''}`}
                 onClick={() => select(p.path)}
               >
-                <span className="path-item-label">{pathLabel(p.path)}</span>
+                <span className="path-item-label">{pathLabel(p)}</span>
                 <span className="path-item-url">{p.path}</span>
                 <span className="path-item-badge">
                   {pathMetricValue(p, pathMetric)} {pathMetricLabel(pathMetric)}

@@ -61,25 +61,7 @@ export default function ViewModeTabs({ mode, onChange }) {
 
   return (
     <nav className="mode-tabs-nav" aria-label="대시보드 모드">
-      <ul className="nav nav-pills mode-tabs mode-tabs-intro flex-nowrap">
-        <li className="nav-item">
-          <button
-            type="button"
-            className={`nav-link mode-tab-intro d-flex align-items-center gap-2${overviewActive ? ' active' : ''}`}
-            onClick={() => onChange(OVERVIEW_TAB.id)}
-            title={OVERVIEW_TAB.subtitle}
-            aria-current={overviewActive ? 'page' : undefined}
-          >
-            <i className={`bi ${OVERVIEW_TAB.icon}`} aria-hidden="true" />
-            <span className="mode-tab-label d-none d-sm-inline">{OVERVIEW_TAB.label}</span>
-            <span className="mode-tab-label d-inline d-sm-none">{OVERVIEW_TAB.shortLabel}</span>
-          </button>
-        </li>
-      </ul>
-
-      <span className="mode-tabs-separator" aria-hidden="true" />
-
-      <ul className="nav nav-pills mode-tabs flex-nowrap">
+      <ul className="nav nav-pills mode-tabs flex-nowrap" style={{width:'100%'}}>
         {VIEW_MODES.map((m) => (
           <li className="nav-item" key={m.id}>
             <button
@@ -95,6 +77,20 @@ export default function ViewModeTabs({ mode, onChange }) {
             </button>
           </li>
         ))}
+
+        <li className="nav-item ms-auto">
+          <button
+            type="button"
+            className={`nav-link mode-tab-intro d-flex align-items-center gap-2${overviewActive ? ' active' : ''}`}
+            onClick={() => onChange(OVERVIEW_TAB.id)}
+            title={OVERVIEW_TAB.subtitle}
+            aria-current={overviewActive ? 'page' : undefined}
+          >
+            <i className={`bi ${OVERVIEW_TAB.icon}`} aria-hidden="true" />
+            <span className="mode-tab-label d-none d-sm-inline">{OVERVIEW_TAB.label}</span>
+            <span className="mode-tab-label d-inline d-sm-none">{OVERVIEW_TAB.shortLabel}</span>
+          </button>
+        </li>
       </ul>
     </nav>
   );
