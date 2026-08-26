@@ -50,6 +50,7 @@ const MONTHLY_DATA = {
           { menu: '기자 PICK 판',clicks: 18293  },
           { menu: '배틀톡',      clicks: 14391  },
           { menu: '팬톡',        clicks: 11336  },
+          { menu: '톡톡쓰기',    clicks: 52526  },
         ],
         top: [
           { menu: '판',   clicks: 41891  },
@@ -158,7 +159,8 @@ const PAGE_CONFIG = {
           { label: '톡톡',        x: 100, w: 95  },
           { label: '팬톡',        x: 195, w: 95  },
           { label: '배틀톡',      x: 290, w: 120 },
-          { label: '기자 PICK 판',x: 410, w: 180 },
+          { label: '기자 PICK 판',x: 410, w: 175 },
+          { label: '톡톡쓰기',    x: 600, w: 29  },
         ],
         snbMenus: [
           { label: '오늘의 톡',    x: 0,   w: 130 },
