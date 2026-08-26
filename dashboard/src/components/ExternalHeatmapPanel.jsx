@@ -252,6 +252,15 @@ function buildHeatCanvas(cw, ch, cfg, helpers) {
   oc.width  = tw; oc.height = th;
   const ctx  = oc.getContext('2d');
   const grid = new Float32Array(tw * th);
+  const cStops = [
+    [0.00, [0,   30,  255]],
+    [0.20, [0,   200, 255]],
+    [0.42, [0,   240, 100]],
+    [0.62, [200, 240, 0  ]],
+    [0.78, [255, 180, 0  ]],
+    [0.90, [255, 50,  0  ]],
+    [1.00, [255, 0,   30 ]],
+  ];
   // 블롭 Y 중심 (HEAT_PAD 만큼 아래로 이동)
   const snbCY = menuY - cropY + menuH / 2 + HEAT_PAD;
   const gnbCY = gnbY  - cropY + gnbH  / 2 + HEAT_PAD;
@@ -397,15 +406,6 @@ function buildHeatCanvas(cw, ch, cfg, helpers) {
   const imgData = ctx.createImageData(tw, th);
   const data    = imgData.data;
   const THRESH  = 0.004;
-  const cStops  = [
-    [0.00, [0,   30,  255]],
-    [0.20, [0,   200, 255]],
-    [0.42, [0,   240, 100]],
-    [0.62, [200, 240, 0  ]],
-    [0.78, [255, 180, 0  ]],
-    [0.90, [255, 50,  0  ]],
-    [1.00, [255, 0,   30 ]],
-  ];
   for (let iy = 0; iy < th; iy++) {
     for (let ix = 0; ix < tw; ix++) {
       const raw = blurred[iy*tw+ix] / maxVal;
