@@ -183,10 +183,10 @@ const PAGE_CONFIG = {
             menuY:   -1, menuH: 0,
             gnbMenus: [], snbMenus: [],
             sectionMenus: [
-              { label: '오늘의판',        x: 0, w: 629, cy: 10   },
-              { label: '새로운베플',       x: 0, w: 629, cy: 480  },
-              { label: '실시간연애상담소', x: 0, w: 629, cy: 980  },
-              { label: '실시간회사톡',     x: 0, w: 629, cy: 1275 },
+              { label: '오늘의판',        x: 0, w: 629, cy: 15   },
+              { label: '새로운베플',       x: 0, w: 629, cy: 530  },
+              { label: '실시간연애상담소', x: 0, w: 629, cy: 1030 },
+              { label: '실시간회사톡',     x: 0, w: 629, cy: 1305 },
             ],
           },
         },
@@ -394,27 +394,31 @@ function buildHeatCanvas(cw, ch, cfg, helpers) {
   }
   ctx.putImageData(imgData, 0, 0);
 
-  // 섹션 캔버스 합성 (독립 정규화)
+  // 섹션 캔버스 합성 (독립 정규화 — 별도 캔버스로 그린 뒤 drawImage 합성)
   for (const { sg, t } of sectionCanvases) {
     let sgMax = 0;
     for (let i = 0; i < sg.length; i++) if (sg[i] > sgMax) sgMax = sg[i];
     if (!sgMax) continue;
-    const sgImg = ctx.createImageData(tw, th);
+    const sc  = document.createElement('canvas');
+    sc.width  = tw; sc.height = th;
+    const sctx = sc.getContext('2d');
+    const sgImg = sctx.createImageData(tw, th);
     const sd = sgImg.data;
     for (let i = 0; i < tw * th; i++) {
       const raw = sg[i] / sgMax;
       if (raw < 0.02) continue;
-      const tv = Math.pow(raw, 0.5) * t;
+      const tv = Math.pow(raw, 0.55) * t;
       let cr=255,cg=0,cb=30;
       for (let s = 0; s < cStops.length-1; s++) {
         const [t0,c0]=cStops[s],[t1,c1]=cStops[s+1];
         if (tv<=t1){const f=(tv-t0)/(t1-t0);cr=Math.round(c0[0]+f*(c1[0]-c0[0]));cg=Math.round(c0[1]+f*(c1[1]-c0[1]));cb=Math.round(c0[2]+f*(c1[2]-c0[2]));break;}
       }
-      const ca = Math.round(raw * tv * (3 - 2*raw) * 190);
+      const ca = Math.round(raw * (3 - 2*raw) * 195);
       const idx = i*4;
       sd[idx]=cr; sd[idx+1]=cg; sd[idx+2]=cb; sd[idx+3]=ca;
     }
-    ctx.putImageData(sgImg, 0, 0);
+    sctx.putImageData(sgImg, 0, 0);
+    ctx.drawImage(sc, 0, 0);  // source-over 합성
   }
 
   const out = document.createElement('canvas');
