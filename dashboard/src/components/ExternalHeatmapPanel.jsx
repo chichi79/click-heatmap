@@ -3,37 +3,43 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 /* ── 월별 클릭 데이터 ─────────────────────────────────────────── */
 const MONTHLY_DATA = {
   '2026-07': {
-    pc: {
-      snb: [
-        { menu: '최신뉴스',   clicks: 199621 },
-        { menu: '랭킹뉴스',   clicks: 172417 },
-        { menu: '사회',       clicks: 79915  },
-        { menu: '경제',       clicks: 75601  },
-        { menu: '정치',       clicks: 56131  },
-        { menu: '세계',       clicks: 40585  },
-        { menu: 'IT/과학',    clicks: 23896  },
-        { menu: '칼럼',       clicks: 5865   },
-        { menu: '포토',       clicks: 5065   },
-        { menu: '투데이댓글', clicks: 3854   },
-        { menu: 'TV',         clicks: 3741   },
-      ],
-      gnb: [
-        { menu: '스포츠', clicks: 18961 },
-        { menu: '뉴스',   clicks: 5933  },
-        { menu: '날씨',   clicks: 3964  },
-        { menu: '연예',   clicks: 3359  },
-        { menu: '판',     clicks: 2225  },
-      ],
+    news: {
+      pc: {
+        snb: [
+          { menu: '최신뉴스',   clicks: 199621 },
+          { menu: '랭킹뉴스',   clicks: 172417 },
+          { menu: '사회',       clicks: 79915  },
+          { menu: '경제',       clicks: 75601  },
+          { menu: '정치',       clicks: 56131  },
+          { menu: '세계',       clicks: 40585  },
+          { menu: 'IT/과학',    clicks: 23896  },
+          { menu: '칼럼',       clicks: 5865   },
+          { menu: '포토',       clicks: 5065   },
+          { menu: '투데이댓글', clicks: 3854   },
+          { menu: 'TV',         clicks: 3741   },
+        ],
+        gnb: [
+          { menu: '스포츠', clicks: 18961 },
+          { menu: '뉴스',   clicks: 5933  },
+          { menu: '날씨',   clicks: 3964  },
+          { menu: '연예',   clicks: 3359  },
+          { menu: '판',     clicks: 2225  },
+        ],
+      },
+      mobile: {
+        snb: [],
+        gnb: [
+          { menu: 'BI',    clicks: 2420658 },
+          { menu: '연예',  clicks: 310635  },
+          { menu: '스포츠',clicks: 217193  },
+          { menu: '뉴스',  clicks: 199673  },
+          { menu: '검색',  clicks: 97643   },
+        ],
+      },
     },
-    mobile: {
-      snb: [], // 추후 추가
-      gnb: [
-        { menu: 'BI',    clicks: 2420658 },
-        { menu: '연예',  clicks: 310635  },
-        { menu: '스포츠',clicks: 217193  },
-        { menu: '뉴스',  clicks: 199673  },
-        { menu: '검색',  clicks: 97643   },
-      ],
+    pan: {
+      pc:     { snb: [], gnb: [] },
+      mobile: { snb: [], gnb: [] },
     },
   },
 };
@@ -42,61 +48,103 @@ const MONTH_LABELS = {
   '2026-07': '2026년 7월',
 };
 
-/* ── 디바이스별 좌표/설정 ─────────────────────────────────────── */
-const DEVICE_CONFIG = {
-  pc: {
-    bgSrc:  '/nate-news-bg.png',
-    ssW:    992,
-    gnbY:   62,  gnbH: 26,
-    menuY:  128, menuH: 44,
-    cropY:  30,  cropH: 340,
-    gnbMenus: [
-      { label: '뉴스',   x: 112, w: 38 },
-      { label: '스포츠', x: 158, w: 52 },
-      { label: '연예',   x: 218, w: 38 },
-      { label: '판',     x: 264, w: 28 },
-      { label: '날씨',   x: 300, w: 38 },
-    ],
-    snbMenus: [
-      { label: '최신뉴스',   x: 55,  w: 78 },
-      { label: '정치',       x: 135, w: 52 },
-      { label: '경제',       x: 193, w: 52 },
-      { label: '사회',       x: 251, w: 52 },
-      { label: '세계',       x: 308, w: 52 },
-      { label: 'IT/과학',    x: 363, w: 62 },
-      { label: '칼럼',       x: 430, w: 50 },
-      { label: '포토',       x: 484, w: 50 },
-      { label: 'TV',         x: 536, w: 34 },
-      { label: '랭킹뉴스',   x: 629, w: 66 },
-      { label: '투데이댓글', x: 698, w: 82 },
-    ],
+/* ── 페이지별 디바이스 설정 ──────────────────────────────────── */
+const PAGE_CONFIG = {
+  news: {
+    label: '뉴스',
+    icon:  'bi-newspaper',
+    devices: {
+      pc: {
+        bgSrc:  '/nate-news-bg.png',
+        ssW:    992,
+        gnbY:   62,  gnbH: 26,
+        menuY:  128, menuH: 44,
+        cropY:  30,  cropH: 340,
+        gnbMenus: [
+          { label: '뉴스',   x: 112, w: 38 },
+          { label: '스포츠', x: 158, w: 52 },
+          { label: '연예',   x: 218, w: 38 },
+          { label: '판',     x: 264, w: 28 },
+          { label: '날씨',   x: 300, w: 38 },
+        ],
+        snbMenus: [
+          { label: '최신뉴스',   x: 55,  w: 78 },
+          { label: '정치',       x: 135, w: 52 },
+          { label: '경제',       x: 193, w: 52 },
+          { label: '사회',       x: 251, w: 52 },
+          { label: '세계',       x: 308, w: 52 },
+          { label: 'IT/과학',    x: 363, w: 62 },
+          { label: '칼럼',       x: 430, w: 50 },
+          { label: '포토',       x: 484, w: 50 },
+          { label: 'TV',         x: 536, w: 34 },
+          { label: '랭킹뉴스',   x: 629, w: 66 },
+          { label: '투데이댓글', x: 698, w: 82 },
+        ],
+      },
+      mobile: {
+        bgSrc:    '/nate-news-mobile-bg.png',
+        ssW:      625,
+        displayW: 390,
+        gnbY:   10,  gnbH: 32,
+        menuY:  50,  menuH: 32,
+        cropY:  0,   cropH: 761,
+        gnbMenus: [
+          { label: 'BI',     x: 8,   w: 32 },
+          { label: '뉴스',   x: 50,  w: 48 },
+          { label: '스포츠', x: 108, w: 64 },
+          { label: '연예',   x: 183, w: 46 },
+          { label: '검색',   x: 590, w: 30 },
+        ],
+        snbMenus: [
+          { label: '홈',      x: 8,   w: 36 },
+          { label: '랭킹뉴스',x: 52,  w: 76 },
+          { label: '이슈픽',  x: 136, w: 56 },
+          { label: '정치',    x: 200, w: 46 },
+          { label: '경제',    x: 253, w: 46 },
+          { label: '사회',    x: 306, w: 46 },
+          { label: '세계',    x: 359, w: 46 },
+          { label: 'IT',      x: 412, w: 24 },
+          { label: '포토',    x: 443, w: 46 },
+          { label: 'TV',      x: 496, w: 24 },
+        ],
+      },
+    },
   },
-  mobile: {
-    bgSrc:     '/nate-news-mobile-bg.png',
-    ssW:       625,
-    displayW:  390,   // 화면 표시 너비 (px)
-    gnbY:   10,  gnbH: 32,
-    menuY:  50,  menuH: 32,
-    cropY:  0,   cropH: 761,
-    gnbMenus: [
-      { label: 'BI',     x: 8,   w: 32 },
-      { label: '뉴스',   x: 50,  w: 48 },
-      { label: '스포츠', x: 108, w: 64 },
-      { label: '연예',   x: 183, w: 46 },
-      { label: '검색',   x: 590, w: 30 },
-    ],
-    snbMenus: [
-      { label: '홈',      x: 8,   w: 36 },
-      { label: '랭킹뉴스',x: 52,  w: 76 },
-      { label: '이슈픽',  x: 136, w: 56 },
-      { label: '정치',    x: 200, w: 46 },
-      { label: '경제',    x: 253, w: 46 },
-      { label: '사회',    x: 306, w: 46 },
-      { label: '세계',    x: 359, w: 46 },
-      { label: 'IT',      x: 412, w: 24 },
-      { label: '포토',    x: 443, w: 46 },
-      { label: 'TV',      x: 496, w: 24 },
-    ],
+  pan: {
+    label: '판',
+    icon:  'bi-chat-dots',
+    devices: {
+      pc: {
+        bgSrc:  null,  // 추후 추가
+        ssW:    992,
+        gnbY:   60,  gnbH: 28,
+        menuY:  100, menuH: 40,
+        cropY:  30,  cropH: 340,
+        gnbMenus: [],
+        snbMenus: [],
+      },
+      mobile: {
+        bgSrc:    '/nate-pan-mobile-bg.png',
+        ssW:      629,
+        displayW: 390,
+        gnbY:   60,  gnbH: 40,
+        menuY:  155, menuH: 35,
+        cropY:  0,   cropH: 838,
+        gnbMenus: [
+          { label: '홈',          x: 10,  w: 44 },
+          { label: '톡톡',        x: 90,  w: 52 },
+          { label: '팬톡',        x: 176, w: 52 },
+          { label: '배틀톡',      x: 262, w: 62 },
+          { label: '기자 PICK 판',x: 358, w: 120 },
+        ],
+        snbMenus: [
+          { label: '오늘의 톡',    x: 10,  w: 90 },
+          { label: '톡커들의 선택',x: 160, w: 100 },
+          { label: '엔터톡',       x: 310, w: 64 },
+          { label: '화제의 톡톡',  x: 430, w: 100 },
+        ],
+      },
+    },
   },
 };
 
@@ -404,32 +452,46 @@ function DataPanel({ helpers }) {
 
 /* ── 메인 패널 ────────────────────────────────────────────────── */
 const ALL_MONTHS = Object.keys(MONTHLY_DATA).sort().reverse();
+const ALL_PAGES  = Object.keys(PAGE_CONFIG);
 
 export default function ExternalHeatmapPanel() {
-  const [activeMonth,  setActiveMonth]  = useState(ALL_MONTHS[0]);
-  const [device,       setDevice]       = useState('pc');
-  const [bgImages,     setBgImages]     = useState({});
+  const [activeMonth, setActiveMonth] = useState(ALL_MONTHS[0]);
+  const [page,        setPage]        = useState('news');
+  const [device,      setDevice]      = useState('mobile');
+  const [bgImages,    setBgImages]    = useState({});
 
-  const cfg        = DEVICE_CONFIG[device];
-  const deviceData = MONTHLY_DATA[activeMonth]?.[device] ?? { snb: [], gnb: [] };
+  const pageCfg    = PAGE_CONFIG[page];
+  const cfg        = pageCfg.devices[device];
+  const deviceData = MONTHLY_DATA[activeMonth]?.[page]?.[device] ?? { snb: [], gnb: [] };
   const helpers    = makeHelpers(deviceData);
-  const bgImage    = bgImages[device] ?? null;
+  const bgKey      = `${page}_${device}`;
+  const bgImage    = bgImages[bgKey] ?? null;
 
-  // 디바이스 변경 시 BG 로드
+  // 페이지/디바이스 변경 시 BG 로드
   useEffect(() => {
-    if (bgImages[device]) return;
+    if (!cfg.bgSrc) return;
+    if (bgImages[bgKey]) return;
     const img = new Image();
-    img.onload  = () => setBgImages(prev => ({ ...prev, [device]: img }));
-    img.onerror = () => setBgImages(prev => ({ ...prev, [device]: null }));
+    img.onload  = () => setBgImages(prev => ({ ...prev, [bgKey]: img }));
+    img.onerror = () => setBgImages(prev => ({ ...prev, [bgKey]: null }));
     img.src = cfg.bgSrc;
-  }, [device, cfg.bgSrc]);
+  }, [bgKey, cfg.bgSrc]);
 
   function handleFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     const img = new Image();
-    img.onload = () => setBgImages(prev => ({ ...prev, [device]: img }));
+    img.onload = () => setBgImages(prev => ({ ...prev, [bgKey]: img }));
     img.src = URL.createObjectURL(file);
+  }
+
+  // 페이지 변경 시 지원 디바이스로 자동 전환
+  function handlePageChange(p) {
+    setPage(p);
+    // 선택한 페이지에 현재 device가 없으면 mobile로 fallback
+    if (!PAGE_CONFIG[p].devices[device]?.bgSrc && PAGE_CONFIG[p].devices.mobile) {
+      setDevice('mobile');
+    }
   }
 
   const hasGnb = helpers.gnb.length > 0;
@@ -440,7 +502,7 @@ export default function ExternalHeatmapPanel() {
       {/* 헤더 */}
       <div className="ext-header">
         <div>
-          <div className="ext-title">네이트 뉴스 · 상단 메뉴 클릭 히트맵</div>
+          <div className="ext-title">네이트 · 상단 메뉴 클릭 히트맵</div>
           <div className="ext-subtitle">
             {hasGnb && <>GNB {helpers.gnbTotal.toLocaleString()}회</>}
             {hasGnb && hasSnb && ' · '}
@@ -470,17 +532,31 @@ export default function ExternalHeatmapPanel() {
         </div>
       </div>
 
-      {/* 월 선택 탭 */}
-      <div className="ext-month-tabs">
-        {ALL_MONTHS.map(m => (
-          <button
-            key={m}
-            className={`ext-month-tab${activeMonth === m ? ' active' : ''}`}
-            onClick={() => setActiveMonth(m)}
-          >
-            {MONTH_LABELS[m] ?? m}
-          </button>
-        ))}
+      {/* 페이지 탭 + 월 선택 */}
+      <div className="ext-controls-row">
+        <div className="ext-page-tabs">
+          {ALL_PAGES.map(p => (
+            <button
+              key={p}
+              className={`ext-page-tab${page === p ? ' active' : ''}`}
+              onClick={() => handlePageChange(p)}
+            >
+              <i className={`bi ${PAGE_CONFIG[p].icon}`} style={{marginRight:5}}/>
+              {PAGE_CONFIG[p].label}
+            </button>
+          ))}
+        </div>
+        <div className="ext-month-tabs" style={{marginBottom:0}}>
+          {ALL_MONTHS.map(m => (
+            <button
+              key={m}
+              className={`ext-month-tab${activeMonth === m ? ' active' : ''}`}
+              onClick={() => setActiveMonth(m)}
+            >
+              {MONTH_LABELS[m] ?? m}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 본문 */}

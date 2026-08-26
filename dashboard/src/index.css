@@ -1712,6 +1712,50 @@ body {
   flex: 1;
 }
 
+/* ── 페이지 탭 + 월 선택 한 줄 ─────────────────────────────── */
+.ext-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.ext-page-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bs-tertiary-bg, #f0f0f0);
+  border-radius: 10px;
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.ext-page-tab {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--bs-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+.ext-page-tab.active {
+  background: var(--bs-primary);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(59,108,231,0.25);
+}
+
+.ext-page-tab:hover:not(.active) {
+  color: var(--bs-body-color);
+  background: rgba(0,0,0,0.04);
+}
+
 /* ── 월별 탭 ─────────────────────────────────────────────────── */
 .ext-month-tabs {
   display: flex;
