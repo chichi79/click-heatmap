@@ -256,23 +256,28 @@ function buildHeatCanvas(cw, ch, cfg, helpers) {
   const snbCY = menuY - cropY + menuH / 2 + HEAT_PAD;
   const gnbCY = gnbY  - cropY + gnbH  / 2 + HEAT_PAD;
 
-  // SECTION 레이어 (콘텐츠 영역 섹션 헤더) — cy 절대좌표 사용
+  // SECTION 레이어 — 섹션별 독립 그리드로 정규화 (클릭수 차이가 커도 모두 표시)
+  const sectionCanvases = [];
   if (sectionMenus?.length) {
-    for (const m of sectionMenus) {
-      const clicks = getC(m.label);
-      if (!clicks) continue;
-      const t  = logT(clicks);
-      const r  = Math.round(28 + t * 50);
-      const cx = Math.round(m.x + m.w / 2 + HEAT_PAD);
-      const cy = Math.round(m.cy - cropY + HEAT_PAD);
-      const s2 = 2 * (r / 1.6) * (r / 1.6);
+    const secClicks = sectionMenus.map(m => ({ m, clicks: getC(m.label) })).filter(x => x.clicks > 0);
+    const secMax = secClicks.length ? Math.max(...secClicks.map(x => x.clicks)) : 1;
+    const secLogMax = Math.log(secMax + 1);
+    for (const { m, clicks } of secClicks) {
+      const t   = Math.log(clicks + 1) / secLogMax;  // 섹션 내 상대 스케일
+      const r   = Math.round(30 + t * 55);
+      const cx  = Math.round(m.x + m.w / 2 + HEAT_PAD);
+      const cy  = Math.round(m.cy - cropY + HEAT_PAD);
+      const s2  = 2 * (r / 1.6) * (r / 1.6);
+      // 이 섹션 전용 그리드
+      const sg  = new Float32Array(tw * th);
       for (let py = Math.max(0, cy-r); py <= Math.min(th-1, cy+r); py++) {
         for (let px = Math.max(0, cx-r); px <= Math.min(tw-1, cx+r); px++) {
           const d2 = (px-cx)**2 + (py-cy)**2;
           if (d2 > r*r) continue;
-          grid[py*tw+px] += clicks * Math.exp(-d2/s2);
+          sg[py*tw+px] += Math.exp(-d2/s2);
         }
       }
+      sectionCanvases.push({ sg, t });
     }
   }
 
@@ -388,6 +393,29 @@ function buildHeatCanvas(cw, ch, cfg, helpers) {
     }
   }
   ctx.putImageData(imgData, 0, 0);
+
+  // 섹션 캔버스 합성 (독립 정규화)
+  for (const { sg, t } of sectionCanvases) {
+    let sgMax = 0;
+    for (let i = 0; i < sg.length; i++) if (sg[i] > sgMax) sgMax = sg[i];
+    if (!sgMax) continue;
+    const sgImg = ctx.createImageData(tw, th);
+    const sd = sgImg.data;
+    for (let i = 0; i < tw * th; i++) {
+      const raw = sg[i] / sgMax;
+      if (raw < 0.02) continue;
+      const tv = Math.pow(raw, 0.5) * t;
+      let cr=255,cg=0,cb=30;
+      for (let s = 0; s < cStops.length-1; s++) {
+        const [t0,c0]=cStops[s],[t1,c1]=cStops[s+1];
+        if (tv<=t1){const f=(tv-t0)/(t1-t0);cr=Math.round(c0[0]+f*(c1[0]-c0[0]));cg=Math.round(c0[1]+f*(c1[1]-c0[1]));cb=Math.round(c0[2]+f*(c1[2]-c0[2]));break;}
+      }
+      const ca = Math.round(raw * tv * (3 - 2*raw) * 190);
+      const idx = i*4;
+      sd[idx]=cr; sd[idx+1]=cg; sd[idx+2]=cb; sd[idx+3]=ca;
+    }
+    ctx.putImageData(sgImg, 0, 0);
+  }
 
   const out = document.createElement('canvas');
   out.width=tw; out.height=th;
