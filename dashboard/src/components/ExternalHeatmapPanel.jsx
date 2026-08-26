@@ -148,40 +148,48 @@ const PAGE_CONFIG = {
         snbMenus: [],
       },
       mobile: {
-        bgSrc:    '/nate-pan-full-bg.png',
-        ssW:      629,
-        displayW: 390,
-        topY:   15,  topH:  30,   // 최상단 유틸 바 (판 로고, MY, 검색)
-        gnbY:   60,  gnbH:  40,   // GNB 탭 (홈, 톡톡, 팬톡...)
-        menuY:  155, menuH: 35,   // SNB
-        cropY:  0,   cropH: 2488, // 전체 (헤더 838 + 콘텐츠 1650)
-        // 콘텐츠 섹션 (헤더 838px + content 오프셋)
-        sectionY: 30, sectionH: 28,
-        sectionMenus: [
-          { label: '오늘의판',        x: 0, w: 629, cy: 838 + 10   },
-          { label: '새로운베플',       x: 0, w: 629, cy: 838 + 480  },
-          { label: '실시간연애상담소', x: 0, w: 629, cy: 838 + 980  },
-          { label: '실시간회사톡',     x: 0, w: 629, cy: 838 + 1275 },
-        ],
-        topMenus: [
-          { label: '판',    x: 0,   w: 220 },  // n판 로고 + 새로운 판 보기 버튼
-          { label: 'MY',    x: 548, w: 40  },
-          { label: '검색',  x: 588, w: 41  },
-        ],
-        gnbMenus: [
-          { label: '홈',          x: 0,   w: 100 },
-          { label: '톡톡',        x: 100, w: 95  },
-          { label: '팬톡',        x: 195, w: 95  },
-          { label: '배틀톡',      x: 290, w: 120 },
-          { label: '기자 PICK 판',x: 410, w: 175 },
-          { label: '톡톡쓰기',    x: 600, w: 29  },
-        ],
-        snbMenus: [
-          { label: '오늘의 톡',    x: 0,   w: 130 },
-          { label: '톡커들의 선택',x: 160, w: 140 },
-          { label: '엔터톡',       x: 320, w: 95  },
-          { label: '화제의 톡톡',  x: 430, w: 150 },
-        ],
+        ssW: 629, displayW: 390,
+        areas: {
+          header: {
+            bgSrc:  '/nate-pan-mobile-bg.png',
+            cropY:  0,  cropH: 838,
+            topY:   15, topH:  30,
+            gnbY:   60, gnbH:  40,
+            menuY:  155, menuH: 35,
+            topMenus: [
+              { label: '판',    x: 0,   w: 220 },
+              { label: 'MY',    x: 548, w: 40  },
+              { label: '검색',  x: 588, w: 41  },
+            ],
+            gnbMenus: [
+              { label: '홈',          x: 0,   w: 100 },
+              { label: '톡톡',        x: 100, w: 95  },
+              { label: '팬톡',        x: 195, w: 95  },
+              { label: '배틀톡',      x: 290, w: 120 },
+              { label: '기자 PICK 판',x: 410, w: 175 },
+              { label: '톡톡쓰기',    x: 600, w: 29  },
+            ],
+            snbMenus: [
+              { label: '오늘의 톡',    x: 0,   w: 130 },
+              { label: '톡커들의 선택',x: 160, w: 140 },
+              { label: '엔터톡',       x: 320, w: 95  },
+              { label: '화제의 톡톡',  x: 430, w: 150 },
+            ],
+          },
+          content: {
+            bgSrc:   '/nate-pan-content-bg.png',
+            cropY:   0,  cropH: 1650,
+            gnbY:    -1, gnbH: 0,   // 없음
+            menuY:   -1, menuH: 0,
+            gnbMenus: [], snbMenus: [],
+            sectionMenus: [
+              { label: '오늘의판',        x: 0, w: 629, cy: 10   },
+              { label: '새로운베플',       x: 0, w: 629, cy: 480  },
+              { label: '실시간연애상담소', x: 0, w: 629, cy: 980  },
+              { label: '실시간회사톡',     x: 0, w: 629, cy: 1275 },
+            ],
+          },
+        },
       },
     },
   },
@@ -390,10 +398,11 @@ function buildHeatCanvas(cw, ch, cfg, helpers) {
 }
 
 /* ── 히트맵 캔버스 컴포넌트 ──────────────────────────────────── */
-function HeatmapCanvas({ bgImage, helpers, cfg }) {
+function HeatmapCanvas({ bgImage, helpers, cfg, ssW: ssWProp }) {
   const canvasRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
-  const { ssW, cropY, cropH, gnbY, gnbH, menuY, menuH, gnbMenus, snbMenus,
+  const ssW = ssWProp ?? cfg.ssW ?? 629;
+  const { cropY, cropH, gnbY, gnbH, menuY, menuH, gnbMenus, snbMenus,
           topY, topH, topMenus, sectionMenus } = cfg;
   const cw = ssW, ch = cropH, oy = cropY;
   // 패딩 포함 캔버스 크기
@@ -546,25 +555,36 @@ function DataSection({ items, total, helpers, label }) {
   );
 }
 
-function DataPanel({ helpers }) {
+function DataPanel({ helpers, area }) {
   const { snb, gnb, top, section } = helpers;
   const { max, logT } = helpers;
 
-  const allItems = [
-    ...( section.length ? section.map(d => ({ ...d, tag: 'SEC' })) : [] ),
-    ...( top.length     ? top.map(d     => ({ ...d, tag: 'TOP' })) : [] ),
-    ...( gnb.length     ? gnb.map(d     => ({ ...d, tag: 'GNB' })) : [] ),
-    ...( snb.length     ? snb.map(d     => ({ ...d, tag: 'SNB' })) : [] ),
-  ].filter(d => d.clicks > 0).sort((a, b) => b.clicks - a.clicks);
+  // area가 있으면 해당 영역만 표시, 없으면 전체
+  const allItems = area === 'content'
+    ? section.map(d => ({ ...d, tag: 'SEC' }))
+    : area === 'header'
+      ? [
+          ...top.map(d     => ({ ...d, tag: 'TOP' })),
+          ...gnb.map(d     => ({ ...d, tag: 'GNB' })),
+          ...snb.map(d     => ({ ...d, tag: 'SNB' })),
+        ]
+      : [
+          ...section.map(d => ({ ...d, tag: 'SEC' })),
+          ...top.map(d     => ({ ...d, tag: 'TOP' })),
+          ...gnb.map(d     => ({ ...d, tag: 'GNB' })),
+          ...snb.map(d     => ({ ...d, tag: 'SNB' })),
+        ];
 
-  const grandTotal = allItems.reduce((s, d) => s + d.clicks, 0);
+  const filtered = allItems.filter(d => d.clicks > 0).sort((a, b) => b.clicks - a.clicks);
+
+  const grandTotal = filtered.reduce((s, d) => s + d.clicks, 0);
 
   const tagColor = { SEC: '#dc3545', TOP: '#6f42c1', GNB: '#0d6efd', SNB: '#198754' };
 
-  if (!allItems.length) return null;
+  if (!filtered.length) return null;
   return (
     <div className="ext-data-panel">
-      {allItems.map((d, i) => {
+      {filtered.map((d, i) => {
         const t     = logT(d.clicks);
         const pct   = (d.clicks / max * 100).toFixed(1);
         const share = grandTotal > 0 ? (d.clicks / grandTotal * 100).toFixed(1) : '—';
@@ -601,24 +621,28 @@ export default function ExternalHeatmapPanel() {
   const [activeMonth, setActiveMonth] = useState(ALL_MONTHS[0]);
   const [page,        setPage]        = useState('news');
   const [device,      setDevice]      = useState('mobile');
+  const [areaTab,     setAreaTab]     = useState('header'); // 헤더/본문 탭
   const [bgImages,    setBgImages]    = useState({});
 
-  const pageCfg    = PAGE_CONFIG[page];
-  const cfg        = pageCfg.devices[device];
-  const deviceData = MONTHLY_DATA[activeMonth]?.[page]?.[device] ?? { snb: [], gnb: [] };
-  const helpers    = makeHelpers(deviceData);
-  const bgKey      = `${page}_${device}`;
-  const bgImage    = bgImages[bgKey] ?? null;
+  const pageCfg      = PAGE_CONFIG[page];
+  const deviceCfg    = pageCfg.devices[device];
+  // areas 구조면 현재 탭 cfg, 아니면 deviceCfg 그대로
+  const hasAreas     = !!deviceCfg?.areas;
+  const cfg          = hasAreas ? deviceCfg.areas[areaTab] : deviceCfg;
+  const deviceData   = MONTHLY_DATA[activeMonth]?.[page]?.[device] ?? { snb: [], gnb: [] };
+  const helpers      = makeHelpers(deviceData);
+  const bgKey        = `${page}_${device}_${hasAreas ? areaTab : ''}`;
+  const bgImage      = bgImages[bgKey] ?? null;
 
-  // 페이지/디바이스 변경 시 BG 로드
+  // cfg.bgSrc 변경 시 BG 로드
   useEffect(() => {
-    if (!cfg.bgSrc) return;
+    if (!cfg?.bgSrc) return;
     if (bgImages[bgKey]) return;
     const img = new Image();
     img.onload  = () => setBgImages(prev => ({ ...prev, [bgKey]: img }));
     img.onerror = () => setBgImages(prev => ({ ...prev, [bgKey]: null }));
     img.src = cfg.bgSrc;
-  }, [bgKey, cfg.bgSrc]);
+  }, [bgKey, cfg?.bgSrc]);
 
   function handleFileChange(e) {
     const file = e.target.files?.[0];
@@ -628,17 +652,23 @@ export default function ExternalHeatmapPanel() {
     img.src = URL.createObjectURL(file);
   }
 
-  // 페이지 변경 시 지원 디바이스로 자동 전환
   function handlePageChange(p) {
     setPage(p);
-    // 선택한 페이지에 현재 device가 없으면 mobile로 fallback
-    if (!PAGE_CONFIG[p].devices[device]?.bgSrc && PAGE_CONFIG[p].devices.mobile) {
+    setAreaTab('header');
+    if (!PAGE_CONFIG[p].devices[device]?.bgSrc &&
+        !PAGE_CONFIG[p].devices[device]?.areas &&
+        PAGE_CONFIG[p].devices.mobile) {
       setDevice('mobile');
     }
   }
 
-  const hasGnb = helpers.gnb.length > 0;
-  const hasSnb = helpers.snb.length > 0;
+  function handleDeviceChange(d) {
+    setDevice(d);
+    setAreaTab('header');
+  }
+
+  const totalClicks = helpers.gnbTotal + helpers.total + helpers.topTotal +
+                      (helpers.section?.reduce((s, d) => s + d.clicks, 0) ?? 0);
 
   return (
     <div className="ext-heatmap-panel">
@@ -647,19 +677,18 @@ export default function ExternalHeatmapPanel() {
         <div>
           <div className="ext-title">네이트 · 상단 메뉴 클릭 히트맵</div>
           <div className="ext-subtitle">
-            {(hasGnb || hasSnb)
-              ? <>총 {(helpers.gnbTotal + helpers.total + helpers.topTotal).toLocaleString()}회 클릭</>
+            {totalClicks > 0
+              ? <>총 {totalClicks.toLocaleString()}회 클릭</>
               : '데이터 없음'}
           </div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          {/* PC/모바일 토글 */}
           <div className="ext-device-tabs">
             {['pc','mobile'].map(d => (
               <button
                 key={d}
                 className={`ext-device-tab${device === d ? ' active' : ''}`}
-                onClick={() => setDevice(d)}
+                onClick={() => handleDeviceChange(d)}
               >
                 {d === 'pc'
                   ? <><i className="bi bi-display" style={{marginRight:4}}/>PC</>
@@ -701,15 +730,33 @@ export default function ExternalHeatmapPanel() {
         </div>
       </div>
 
+      {/* 헤더/본문 영역 탭 (areas가 있을 때만) */}
+      {hasAreas && (
+        <div className="ext-area-tabs">
+          <button
+            className={`ext-area-tab${areaTab === 'header' ? ' active' : ''}`}
+            onClick={() => setAreaTab('header')}
+          >
+            <i className="bi bi-layout-text-window-reverse" style={{marginRight:5}}/>헤더
+          </button>
+          <button
+            className={`ext-area-tab${areaTab === 'content' ? ' active' : ''}`}
+            onClick={() => setAreaTab('content')}
+          >
+            <i className="bi bi-layout-text-sidebar" style={{marginRight:5}}/>본문
+          </button>
+        </div>
+      )}
+
       {/* 본문 */}
       <div className="ext-body">
         <div className="ext-map-col">
-          <HeatmapCanvas bgImage={bgImage} helpers={helpers} cfg={cfg}/>
+          <HeatmapCanvas bgImage={bgImage} helpers={helpers} cfg={cfg} ssW={deviceCfg?.ssW}/>
           <Legend/>
         </div>
         <div className="ext-stat-col">
           <div className="ext-stat-head">메뉴별 클릭 순위</div>
-          <DataPanel helpers={helpers}/>
+          <DataPanel helpers={helpers} area={hasAreas ? areaTab : null}/>
         </div>
       </div>
     </div>
