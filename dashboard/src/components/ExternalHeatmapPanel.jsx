@@ -185,8 +185,8 @@ const PAGE_CONFIG = {
             sectionMenus: [
               { label: '오늘의판',        x: 0, w: 629, cy: 45   },
               { label: '새로운베플',       x: 0, w: 629, cy: 560  },
-              { label: '실시간연애상담소', x: 0, w: 629, cy: 1060 },
-              { label: '실시간회사톡',     x: 0, w: 629, cy: 1335 },
+              { label: '실시간연애상담소', x: 0, w: 629, cy: 1090 },
+              { label: '실시간회사톡',     x: 0, w: 629, cy: 1365 },
             ],
           },
         },
